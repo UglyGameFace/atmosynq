@@ -63,6 +63,8 @@ New `WeatherFxOverlayView` renders above Filament:
 - fog driven by fog code and visibility
 - thunder flashes / lightning
 - touch pulse rings
+- wet moving reflection streaks
+- parallax foreground pine silhouettes for stronger scene depth
 - cinematic vignette
 - Animated / Static support
 
@@ -92,7 +94,16 @@ Must remain intact:
 - Filament failure fallback to `WeatherHeroView`
 
 ## Current status
-Implementation is in progress on the feature branch. No completion claim until exact-head CI passes and the resulting APK is checked on the real Samsung device.
+Implementation is complete on the feature branch, but the task is not closed because real-device validation is still required.
+
+Validation evidence before this documentation update:
+- code head: `310fafc043eb8de3a4fae8aac8109bf4202dbbf4`
+- GitHub Actions: Atmosynq Android CI run #68
+- unit tests: passed
+- Kotlin / Android debug build: passed
+- APK artifact upload: passed
+
+The documentation-only head created by this status update must also remain green before the branch is treated as the exact validated PR head.
 
 ## Validation required
 Exact branch head must pass:
@@ -139,4 +150,4 @@ The v0.4.1 interaction/atmosphere pass does not magically turn the tiny prototyp
 Those remain behind the current validation gate rather than being stacked blindly into this branch.
 
 ## Next step
-Run exact-head Android CI for the v0.4.1 branch, fix any compile/API/regression failures, inspect the final diff, then install the exact green APK on the Samsung for the real visual/interaction gate.
+Confirm CI remains green on the final documentation-only branch head, inspect the final diff, then install the exact green APK on the Samsung for the real visual/interaction gate. Do not merge until the device check verifies the interaction, visuals, scroll arbitration, stability and preserved app paths.
