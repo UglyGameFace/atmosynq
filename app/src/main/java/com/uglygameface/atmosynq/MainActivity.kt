@@ -198,7 +198,7 @@ class MainActivity : Activity() {
         )
 
         val currentCard = FrameLayout(this).apply {
-            background = roundedBackground(COLOR_HERO_FALLBACK, 26, COLOR_HERO_STROKE)
+            background = roundedBackground(COLOR_HERO_FALLBACK, 28, COLOR_HERO_STROKE)
             clipToOutline = true
         }
 
@@ -219,9 +219,9 @@ class MainActivity : Activity() {
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     intArrayOf(
-                        Color.argb(8, 4, 10, 22),
-                        Color.argb(82, 4, 10, 22),
-                        Color.argb(230, 4, 10, 22)
+                        Color.argb(24, 2, 10, 24),
+                        Color.argb(30, 2, 10, 24),
+                        Color.argb(190, 2, 9, 20)
                     )
                 )
             },
@@ -231,114 +231,176 @@ class MainActivity : Activity() {
             )
         )
 
-        val heroContent = LinearLayout(this).apply {
+        val heroPrimary = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.START
-            setPadding(dp(20), dp(18), dp(20), dp(18))
+            setPadding(dp(18), dp(16), dp(18), 0)
         }
+
+        heroLocation = TextView(this).apply {
+            text = "●  Local weather"
+            textSize = 12.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(COLOR_LOCATION)
+            gravity = Gravity.START
+        }
+        heroPrimary.addView(heroLocation, matchWrap())
 
         currentTemperature = TextView(this).apply {
             text = "--°"
-            textSize = 60f
+            textSize = 64f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
             includeFontPadding = false
+            setPadding(0, dp(2), 0, 0)
         }
-        heroContent.addView(currentTemperature, matchWrap())
+        heroPrimary.addView(currentTemperature, matchWrap())
 
         currentCondition = TextView(this).apply {
             text = "Weather not synced"
-            textSize = 19f
+            textSize = 21f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
         }
-        heroContent.addView(currentCondition, matchWrap())
+        heroPrimary.addView(currentCondition, matchWrap())
 
         currentHighLow = TextView(this).apply {
             text = "Use your location to bring the scene alive"
             textSize = 13.5f
             setTextColor(COLOR_TEXT_SECONDARY)
             gravity = Gravity.START
-            setPadding(0, dp(5), 0, 0)
+            setPadding(0, dp(4), 0, 0)
         }
-        heroContent.addView(currentHighLow, matchWrap())
-
-        currentDetails = TextView(this).apply {
-            text = "Dashboard, widget, and wallpaper stay synced to the same weather."
-            textSize = 12.5f
-            setTextColor(COLOR_MUTED)
-            gravity = Gravity.START
-            setLineSpacing(0f, 1.18f)
-            setPadding(0, dp(12), 0, 0)
-            maxLines = 4
-        }
-        heroContent.addView(currentDetails, matchWrap())
+        heroPrimary.addView(currentHighLow, matchWrap())
 
         currentCard.addView(
-            heroContent,
+            heroPrimary,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP
+            )
+        )
+
+        val metricsPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(10))
+            background = roundedBackground(
+                Color.argb(188, 7, 22, 39),
+                20,
+                Color.argb(150, 87, 168, 220)
+            )
+        }
+
+        val metricsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        metricFeels = metricValue("--°")
+        metricHumidity = metricValue("--%")
+        metricWind = metricValue("--")
+        metricVisibility = metricValue("--")
+
+        metricsRow.addView(metricCell("Feels like", metricFeels), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsRow.addView(metricCell("Humidity", metricHumidity), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsRow.addView(metricCell("Wind", metricWind), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsRow.addView(metricCell("Visibility", metricVisibility), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsPanel.addView(metricsRow, matchWrap())
+
+        metricsPanel.addView(
+            View(this).apply { setBackgroundColor(Color.argb(80, 150, 205, 235)) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(8)
+            }
+        )
+
+        val metricsBottom = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        metricPrecipitation = TextView(this).apply {
+            text = "Precipitation  --"
+            textSize = 11.5f
+            setTextColor(COLOR_TEXT_SECONDARY)
+            gravity = Gravity.START
+        }
+        metricSun = TextView(this).apply {
+            text = "Sunrise / sunset  --"
+            textSize = 11.5f
+            setTextColor(COLOR_TEXT_SECONDARY)
+            gravity = Gravity.END
+        }
+        metricsBottom.addView(metricPrecipitation, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsBottom.addView(metricSun, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.25f))
+        metricsPanel.addView(metricsBottom, matchWrap())
+
+        currentCard.addView(
+            metricsPanel,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM
-            )
+            ).apply {
+                leftMargin = dp(14)
+                rightMargin = dp(14)
+                bottomMargin = dp(14)
+            }
         )
 
         content.addView(
             currentCard,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(270)
+                dp(360)
             ).apply {
                 bottomMargin = dp(14)
             }
         )
 
-        locationButton = premiumButton("Use current location", primary = true) {
-            requestOrCaptureLocation()
-        }
-        content.addView(
-            locationButton,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(52)
-            ).apply {
-                bottomMargin = dp(8)
-            }
-        )
-
-        wallpaperButton = premiumButton(
-            if (Build.VERSION.SDK_INT >= 36) {
-                "Set home / lock live wallpaper"
-            } else {
-                "Preview & set live wallpaper"
-            },
-            primary = false
-        ) {
+        wallpaperButton = premiumButton("▣   Set Live Wallpaper   ›", primary = true) {
             openWallpaperPicker()
         }
         content.addView(
             wallpaperButton,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(52)
+                dp(58)
             ).apply {
-                bottomMargin = dp(8)
+                bottomMargin = dp(10)
             }
         )
 
-        widgetButton = premiumButton("Add Atmosynq home widget", primary = false) {
+        val secondaryActions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
+        locationButton = premiumButton("⌖  Current Location", primary = false) {
+            requestOrCaptureLocation()
+        }
+        widgetButton = premiumButton("▦  Add Home Widget", primary = false) {
             requestPinWidget()
         }
-        content.addView(
-            widgetButton,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(52)
-            ).apply {
-                bottomMargin = dp(14)
+
+        secondaryActions.addView(
+            locationButton,
+            LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                marginEnd = dp(5)
             }
+        )
+        secondaryActions.addView(
+            widgetButton,
+            LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                marginStart = dp(5)
+            }
+        )
+        content.addView(
+            secondaryActions,
+            matchWrap().apply { bottomMargin = dp(14) }
         )
 
         hourlySection = LinearLayout(this).apply {
