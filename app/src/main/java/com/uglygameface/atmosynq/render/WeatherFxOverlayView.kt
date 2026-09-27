@@ -153,9 +153,9 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     ) {
         val alphaBase =
             if (isDay) {
-                (18f + cloud * 30f)
+                (1.5f + cloud * 4.5f)
             } else {
-                (42f + cloud * 54f)
+                (14f + cloud * 20f)
             }
 
         paint.style = Paint.Style.FILL
@@ -266,22 +266,22 @@ class WeatherFxOverlayView(context: Context) : View(context) {
                             255f * 0.085f
                         )
 
-            strokePaint.strokeWidth = 0.7f + (index % 3) * 0.38f
-            val purple = index % 6 == 0
+            strokePaint.strokeWidth = 0.55f + (index % 3) * 0.26f
+            val purple = index % 7 == 0
             strokePaint.color =
                 if (purple) {
                     Color.argb(
-                        if (isDay) 17 else 31,
-                        184,
-                        105,
-                        255
+                        if (isDay) 5 else 14,
+                        166,
+                        125,
+                        222
                     )
                 } else {
                     Color.argb(
-                        if (isDay) 24 else 43,
-                        112,
-                        220,
-                        255
+                        if (isDay) 8 else 18,
+                        126,
+                        182,
+                        214
                     )
                 }
 
