@@ -126,6 +126,7 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             .toFloat()
 
         drawAtmosphere(canvas, seconds, isDay, cloud)
+        drawForegroundDepth(canvas, seconds, isDay, cloud, wind)
         drawWind(canvas, seconds, wind, cloud)
         drawPrecipitation(canvas, seconds, weather, wind)
         drawFog(canvas, seconds, weather, cloud)
@@ -225,6 +226,117 @@ class WeatherFxOverlayView(context: Context) : View(context) {
                 radius,
                 paint
             )
+        }
+    }
+
+    private fun drawForegroundDepth(
+        canvas: Canvas,
+        seconds: Float,
+        isDay: Boolean,
+        cloud: Float,
+        wind: Float
+    ) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+
+        // Broken horizontal highlights keep the lower scene reading as wet water instead
+        // of a flat dark polygon. They move with wind and camera parallax.
+        repeat(24) { index ->
+            val seed = hash(1_700 + index * 71)
+            val y = h * (0.56f + index / 24f * 0.34f)
+            val travel = fract(seconds * (0.025f + wind * 0.018f) + index * 0.091f)
+            val baseX = ((seed and 0x3ff) / 1023f) * w
+            val x = (baseX + travel * w * 0.18f) % w
+            val length = w * (0.025f + ((seed shr 10) and 0xff) / 255f * 0.09f)
+
+            strokePaint.strokeWidth = 0.8f + (index % 3) * 0.45f
+            val purple = index % 5 == 0
+            strokePaint.color =
+                if (purple) {
+                    Color.argb(
+                        if (isDay) 24 else 42,
+                        184,
+                        105,
+                        255
+                    )
+                } else {
+                    Color.argb(
+                        if (isDay) 36 else 55,
+                        112,
+                        220,
+                        255
+                    )
+                }
+            canvas.drawLine(
+                x + parallaxX * 10f,
+                y,
+                (x + length).coerceAtMost(w),
+                y + sin(seconds * 0.7f + index) * 1.6f,
+                strokePaint
+            )
+        }
+
+        // Near silhouettes provide a strong depth cue and hide the "cardboard diorama"
+        // feeling of the prototype GLB without replacing Filament's actual 3D scene.
+        val treeAlpha =
+            if (isDay) {
+                (112f + cloud * 45f).toInt()
+            } else {
+                188
+            }
+
+        repeat(8) { index ->
+            val normalized = index / 7f
+            val leftX = w * (-0.035f + normalized * 0.25f) + parallaxX * 20f
+            val rightX = w - leftX
+            val size = h * (0.10f + (index % 4) * 0.018f)
+            val baseY = h * (0.91f + (index % 3) * 0.022f)
+            drawPine(canvas, leftX, baseY, size, treeAlpha)
+            drawPine(canvas, rightX, baseY, size * 0.94f, treeAlpha)
+        }
+
+        paint.style = Paint.Style.FILL
+        paint.color = Color.argb(
+            if (isDay) 38 else 72,
+            1,
+            10,
+            22
+        )
+        canvas.drawRect(0f, h * 0.955f, w, h, paint)
+    }
+
+    private fun drawPine(
+        canvas: Canvas,
+        x: Float,
+        baseY: Float,
+        size: Float,
+        alpha: Int
+    ) {
+        paint.style = Paint.Style.FILL
+        paint.color = Color.argb(alpha.coerceIn(0, 230), 2, 18, 28)
+
+        val top = baseY - size
+        val trunkWidth = size * 0.055f
+        canvas.drawRect(
+            x - trunkWidth,
+            baseY - size * 0.24f,
+            x + trunkWidth,
+            baseY,
+            paint
+        )
+
+        repeat(4) { tier ->
+            val t = tier / 3f
+            val tierY = top + size * (0.22f + t * 0.52f)
+            val half = size * (0.16f + t * 0.21f)
+            val tierHeight = size * 0.34f
+
+            path.reset()
+            path.moveTo(x, tierY - tierHeight * 0.58f)
+            path.lineTo(x - half, tierY + tierHeight * 0.55f)
+            path.lineTo(x + half, tierY + tierHeight * 0.55f)
+            path.close()
+            canvas.drawPath(path, paint)
         }
     }
 
