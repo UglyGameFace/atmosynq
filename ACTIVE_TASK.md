@@ -111,7 +111,7 @@ Reason:
 Do not delete the existing wallpaper renderer until the Filament wallpaper path passes real-device validation.
 
 ## Validation gate
-Open a fresh PR to `main`.
+PR #11 — `v0.4.0: migrate dashboard weather hero to Filament` — is open to `main`.
 
 Exact-head CI must pass:
 - dependency resolution
