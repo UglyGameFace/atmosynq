@@ -295,7 +295,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         val activeViewer = viewer
         colorGrading?.let { grading ->
             runCatching {
-                activeViewer?.engine?.destroy(grading)
+                activeViewer?.engine?.destroyColorGrading(grading)
             }
         }
         colorGrading = null
