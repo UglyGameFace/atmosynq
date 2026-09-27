@@ -52,6 +52,7 @@ class AtmosynqWidgetProvider : AppWidgetProvider() {
                     OpenMeteoClient().fetchReport(location.latitude, location.longitude)
                 }.getOrNull()
 
+                report?.current?.let { cacheSnapshot(context, it) }
                 val snapshot = report?.current ?: cachedSnapshot(context)
                 if (snapshot == null) {
                     ids.forEach { manager.updateAppWidget(it, errorViews(context, it)) }
@@ -144,6 +145,13 @@ class AtmosynqWidgetProvider : AppWidgetProvider() {
             setOnClickPendingIntent(R.id.widget_root, openApp)
             setOnClickPendingIntent(R.id.widget_refresh, refresh)
         }
+
+    private fun cacheSnapshot(context: Context, snapshot: WeatherSnapshot) {
+        context.getSharedPreferences("atmosynq_weather_cache", Context.MODE_PRIVATE)
+            .edit()
+            .putString("snapshot_json", snapshot.toJson())
+            .apply()
+    }
 
     private fun cachedSnapshot(context: Context): WeatherSnapshot? =
         context.getSharedPreferences("atmosynq_weather_cache", Context.MODE_PRIVATE)
