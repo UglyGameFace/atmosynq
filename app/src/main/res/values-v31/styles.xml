@@ -3,6 +3,5 @@
         <item name="android:windowSplashScreenBackground">@color/atmosynq_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/atmosynq_mark</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@color/atmosynq_icon_background</item>
-        <item name="android:postSplashScreenTheme">@style/Theme.Atmosynq</item>
     </style>
 </resources>
