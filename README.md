@@ -2,16 +2,16 @@
 
 **Weather that comes alive.**
 
-Atmosynq is a real-time weather app and dynamic live-wallpaper engine for Android, designed to make your phone visually react to the world around you.
+Atmosynq is a real-time weather app and dynamic live-weather surface engine for Android. It connects the forecast, widgets, and live wallpaper to one shared weather state so your phone can visually react to the world around you instead of showing three unrelated guesses in three different places.
 
-Instead of showing a static wallpaper beside an unrelated weather widget, Atmosynq connects the two. Your animated scene changes with your actual local weather, time of day, sunrise, sunset, cloud cover, precipitation, wind, visibility, and storms.
+Your Atmosynq surfaces can react to local weather, time of day, sunrise, sunset, cloud cover, precipitation, wind, visibility, snow, fog, and thunderstorms.
 
 ## Core Features
 
 - Real-time local weather
 - Current temperature and feels-like temperature
 - Daily high and low
-- Hourly forecast
+- Next 12 hours
 - 7-day forecast
 - Rain and snow forecasts
 - Humidity
@@ -19,35 +19,16 @@ Instead of showing a static wallpaper beside an unrelated weather widget, Atmosy
 - Visibility
 - Sunrise and sunset
 - Dynamic day/night transitions
-- Weather-reactive live wallpapers
-- Real-time rain effects
-- Snow effects
-- Fog and atmospheric haze
-- Cloud-cover-based lighting
-- Wind-driven particle direction
-- Thunderstorm and lightning effects
-- Smooth transitions as conditions change
-- Cached weather when temporarily offline
-- Optional weather information displayed directly on the wallpaper
-
-## Live Weather Engine
-
-Atmosynq maps real weather conditions directly into the visual scene.
-
-- Rainfall controls rain density and splash frequency
-- Snowfall controls snow intensity
-- Wind changes cloud and precipitation movement
-- Cloud cover changes environmental lighting
-- Visibility controls fog strength
-- Sunrise and sunset gradually change scene lighting
-- Thunderstorms enable lightning effects
-- Day/night state changes the entire atmosphere
-
-The wallpaper and weather dashboard use the same weather data path so the visual scene matches the conditions being reported.
+- Weather-reactive live wallpaper
+- Rain, snow, fog, cloud, wind, and lightning visuals
+- Cached weather fallback while temporarily offline
+- Android weather home-screen widget
+- Android 16 home / lock / both live-wallpaper instances
+- One-tap widget pinning on compatible launchers
 
 ## Weather Dashboard
 
-The Android app currently includes:
+The Android app currently shows:
 
 - Current conditions and temperature
 - Feels-like temperature
@@ -61,11 +42,81 @@ The Android app currently includes:
 - Next 12 hours
 - 7-day forecast
 
-Hourly conditions also carry their own day/night state so clear-sky forecast icons do not show a daytime sun at night.
+Hourly conditions carry their own day/night state so a clear 2 AM forecast does not proudly display a daytime sun.
+
+## Live Weather Engine
+
+Atmosynq maps real weather conditions into the visual scene.
+
+- Rainfall controls rain density
+- Snowfall controls snow intensity
+- Wind changes precipitation direction
+- Cloud cover changes environmental lighting
+- Visibility controls fog strength
+- Sunrise and sunset gradually change scene lighting
+- Thunderstorms enable lightning effects
+- Day/night state changes the atmosphere
+
+The weather dashboard, widget, and wallpaper all use the same Atmosynq/Open-Meteo weather path.
+
+## Android Live Surfaces
+
+### Live wallpaper
+
+Atmosynq uses Android `WallpaperService` with an OpenGL ES renderer for continuous effects while the wallpaper is visible.
+
+The renderer supports:
+
+- Day/night relighting
+- Rain particles
+- Snow particles
+- Fog
+- Cloud-based dimming
+- Sunrise/sunset warmth
+- Wind-driven precipitation
+- Thunderstorm lightning
+- Optional private/licensed animated scene video
+
+### Home-screen weather widget
+
+The Android widget renders a miniature Atmosynq weather scene instead of only swapping generic icons.
+
+Its rendered scene can show:
+
+- Day or night sky
+- Sun or moon
+- Cloud density
+- Visible rain streaks
+- Wind-slanted rain
+- Snow particles
+- Fog/haze
+- Thunderstorm clouds and lightning
+
+The widget supports launcher resizing, manual refresh, system refresh scheduling, cached weather fallback, tap-to-open, and one-tap pinning from inside Atmosynq.
+
+The widget is a rendered weather snapshot surface, not a continuously running OpenGL loop. Full continuous animation remains in the live wallpaper.
+
+### Home and lock wallpaper instances
+
+On Android 16, Atmosynq supports distinct live-wallpaper instances for:
+
+- **Home**
+- **Lock**
+- **Home + Lock**
+
+Each instance preserves the same real weather while allowing a surface-specific render profile.
+
+Current profiles:
+
+- **Home:** full brightness, approximately 33 FPS target
+- **Lock:** 86% brightness, approximately 24 FPS target
+- **Both:** 94% brightness, approximately 29 FPS target
+
+Older Android versions retain the normal live-wallpaper engine path.
 
 ## Wallpaper Display Modes
 
-Planned display modes:
+Planned weather-text display modes:
 
 - **Clean** — animated scene only
 - **Minimal** — temperature and current condition
@@ -75,39 +126,54 @@ Weather information will also be repositionable so it does not cover important p
 
 ## Privacy
 
-Atmosynq is being designed with location privacy in mind.
+Atmosynq is designed with location privacy in mind.
 
 - Location is used to retrieve local weather
 - Saved weather coordinates are stored in app-private preferences on the device
 - Those preferences are excluded from Android cloud backup and device-transfer extraction
 - Continuous background location access is not required for the core design
-- No weather API key is required for the current weather provider implementation
+- No weather API key is required for the current Open-Meteo implementation
 
 ## Technology
 
 - Android
 - Kotlin
 - Android `WallpaperService`
+- Android App Widgets / `RemoteViews`
 - OpenGL ES / custom rendering
 - Open-Meteo weather data
 - Location-based weather synchronization
 - GitHub Actions automated Android builds
 
-## Development status
+## Build Status
 
-The current source implements the first live-wallpaper/weather synchronization milestone plus the first real weather dashboard and forecast experience.
+The Android baseline, weather dashboard, home widget, and Android 16 per-surface wallpaper work have all passed GitHub Actions unit tests and debug APK assembly.
 
-The Android CI workflow runs unit tests, assembles the debug APK, and uploads the APK as a GitHub Actions artifact.
+Current merged Android main includes:
 
-Still under active development:
+- PR #1 — weather dashboard + live wallpaper baseline
+- PR #2 — rendered Android weather widget
+- PR #3 — Android 16 home / lock / both live-wallpaper instances
 
-- On-device renderer and battery validation
-- Wallpaper Clean/Minimal/Detailed weather-text modes
-- Semantic scene masks for more convincing day/night relighting
-- Dedicated hail rendering
-- Store release hardening
+The next Android gate is real-device validation of launcher widget rendering, wallpaper placement, GPU behavior, and battery use.
 
-## Scene assets
+## Apple / iOS Direction
+
+Atmosynq is intended to expand to iPhone and iPad with platform-native surfaces rather than pretending iOS exposes Android's live-wallpaper engine.
+
+Planned Apple surfaces include:
+
+- SwiftUI weather app
+- WidgetKit Home Screen widgets
+- WidgetKit Lock Screen widgets
+- ActivityKit Live Activities
+- Dynamic Island weather-event views where appropriate
+- Weather-reactive generated wallpaper exports
+- Live Photo exports where supported
+
+Continuous third-party live-wallpaper rendering is an Android capability; Apple surfaces will use WidgetKit, Live Activities, and generated wallpaper media within Apple's platform limits.
+
+## Scene Assets
 
 The public repository does not bundle copyrighted or third-party wallpaper footage. The renderer has a built-in procedural fallback so the app and CI remain functional without a video asset.
 
@@ -116,8 +182,6 @@ For local/private development, place an original or properly licensed vertical l
 `app/src/main/res/raw/scene_neutral.mp4`
 
 `tools/derain_source.sh` can prepare a supplied loop before it is copied into that location. The path is ignored by Git so private scene media is not accidentally published.
-
-## Assets
 
 Atmosynq's rendering engine is designed to support original, licensed, and user-provided visual scenes.
 
