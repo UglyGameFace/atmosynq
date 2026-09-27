@@ -68,7 +68,7 @@ class SceneProfileResolverTest {
                 )
             )
 
-        assertEquals(SettlementKind.LOCAL, profile.settlement)
+        assertEquals(SettlementKind.TOWN, profile.settlement)
         assertEquals(TerrainKind.MOUNTAIN, profile.terrain)
     }
 
