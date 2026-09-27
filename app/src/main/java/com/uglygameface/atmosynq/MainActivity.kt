@@ -389,17 +389,11 @@ class MainActivity : Activity() {
             status.text = "Not synced yet"
             wallpaperButton.isEnabled = false
             wallpaperButton.alpha = 0.42f
-            heroHandler.removeCallbacks(heroRunnable)
-            heroFrames = emptyList()
-            heroFrameIndex = 0
             activeReport = null
-            heroScene.animate().cancel()
+            recycleHeroFrames()
             heroScene.setImageResource(R.drawable.atmosynq_logo)
-            heroScene.alpha = 0.34f
-            currentTemperature.text = "--°"
-            currentCondition.text = "Weather not synced"
-            currentHighLow.text = "Use your location to bring the scene alive"
-            currentDetails.text = "The dashboard, widget, and wallpaper will all use the same local weather."
+            heroScene.scaleType = ImageView.ScaleType.CENTER_CROP
+            heroScene.alpha = 0.55f
         } else {
             status.text = "Refreshing local weather…"
             wallpaperButton.isEnabled = true
@@ -408,12 +402,83 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun setMotionMode(animated: Boolean) {
+        if (motionStore.isAnimated() != animated) {
+            motionStore.setAnimated(animated)
+            sendBroadcast(
+                Intent(this, AtmosynqWidgetProvider::class.java)
+                    .setAction(AtmosynqWidgetProvider.ACTION_REFRESH)
+            )
+        }
+        applyMotionMode()
+    }
+
+    private fun applyMotionMode() {
+        if (!::animatedTab.isInitialized || !::staticTab.isInitialized) return
+
+        val animated = motionStore.isAnimated()
+        styleMotionTab(animatedTab, active = animated)
+        styleMotionTab(staticTab, active = !animated)
+
+        heroHandler.removeCallbacks(heroRunnable)
+        if (heroFrames.isEmpty()) return
+
+        if (animated) {
+            heroFrameIndex %= heroFrames.size
+            showHeroFrame(heroFrameIndex, animate = false)
+            heroHandler.postDelayed(heroRunnable, HERO_FRAME_MS)
+        } else {
+            val weatherCode = activeReport?.current?.weatherCode ?: -1
+            val staticIndex = if (weatherCode in THUNDER_CODES) 1 else 0
+            heroFrameIndex = staticIndex.coerceAtMost(heroFrames.lastIndex)
+            showHeroFrame(heroFrameIndex, animate = false)
+        }
+    }
+
+    private fun showHeroFrame(index: Int, animate: Boolean) {
+        if (heroFrames.isEmpty() || !::heroScene.isInitialized) return
+        val safeIndex = index.coerceIn(0, heroFrames.lastIndex)
+
+        heroScene.animate().cancel()
+        heroScene.scaleType = ImageView.ScaleType.CENTER_CROP
+        heroScene.setImageBitmap(heroFrames[safeIndex])
+
+        if (animate) {
+            heroScene.alpha = 0.74f
+            heroScene.animate()
+                .alpha(1f)
+                .setDuration(260L)
+                .start()
+        } else {
+            heroScene.alpha = 1f
+        }
+    }
+
+    private fun replaceHeroFrames(frames: List<Bitmap>) {
+        recycleHeroFrames()
+        heroFrames = frames
+        heroFrameIndex = 0
+    }
+
+    private fun recycleHeroFrames() {
+        heroFrames.forEach { bitmap ->
+            if (!bitmap.isRecycled) bitmap.recycle()
+        }
+        heroFrames = emptyList()
+        heroFrameIndex = 0
+    }
+
     private fun requestOrCaptureLocation() {
         val coarseGranted =
-            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+
         if (!coarseGranted) {
             requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION),
+                arrayOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ),
                 LOCATION_PERMISSION_REQUEST
             )
             return
@@ -428,28 +493,38 @@ class MainActivity : Activity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode != LOCATION_PERMISSION_REQUEST) return
+
         val coarseGranted =
-            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+
         if (coarseGranted) {
             captureCurrentLocation()
         } else {
-            status.text = "Location permission was not granted"
+            status.text = "Location permission not granted"
         }
     }
 
     private fun captureCurrentLocation() {
         val manager = getSystemService(LocationManager::class.java)
         val precise =
-            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
         val enabled = manager.getProviders(true)
+
         val provider = when {
-            precise && enabled.contains(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-            enabled.contains(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-            enabled.isNotEmpty() -> enabled.first()
-            else -> null
+            precise && enabled.contains(LocationManager.GPS_PROVIDER) ->
+                LocationManager.GPS_PROVIDER
+            enabled.contains(LocationManager.NETWORK_PROVIDER) ->
+                LocationManager.NETWORK_PROVIDER
+            enabled.isNotEmpty() ->
+                enabled.first()
+            else ->
+                null
         }
+
         if (provider == null) {
-            status.text = "Location services are off. Turn them on and try again."
+            status.text = "Turn on Location and try again"
             startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
             return
         }
@@ -457,57 +532,95 @@ class MainActivity : Activity() {
         callbackUsed.set(false)
         status.text = "Getting current location…"
         locationButton.isEnabled = false
+        locationButton.alpha = 0.6f
 
         try {
             if (Build.VERSION.SDK_INT >= 30) {
-                manager.getCurrentLocation(provider, CancellationSignal(), mainExecutor) { location ->
+                manager.getCurrentLocation(
+                    provider,
+                    CancellationSignal(),
+                    mainExecutor
+                ) { location ->
                     finishLocationRequest(location ?: bestLastKnown(manager, enabled))
                 }
             } else {
                 @Suppress("DEPRECATION")
-                manager.requestSingleUpdate(provider, object : LocationListener {
-                    override fun onLocationChanged(location: Location) = finishLocationRequest(location)
-                    @Deprecated("Deprecated by Android")
-                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
-                    override fun onProviderEnabled(provider: String) = Unit
-                    override fun onProviderDisabled(provider: String) = Unit
-                }, Looper.getMainLooper())
+                manager.requestSingleUpdate(
+                    provider,
+                    object : LocationListener {
+                        override fun onLocationChanged(location: Location) {
+                            finishLocationRequest(location)
+                        }
+
+                        @Deprecated("Deprecated by Android")
+                        override fun onStatusChanged(
+                            provider: String?,
+                            status: Int,
+                            extras: Bundle?
+                        ) = Unit
+
+                        override fun onProviderEnabled(provider: String) = Unit
+                        override fun onProviderDisabled(provider: String) = Unit
+                    },
+                    Looper.getMainLooper()
+                )
             }
         } catch (_: SecurityException) {
             finishLocationRequest(null)
         }
     }
 
-    private fun bestLastKnown(manager: LocationManager, providers: List<String>): Location? =
+    private fun bestLastKnown(
+        manager: LocationManager,
+        providers: List<String>
+    ): Location? =
         providers.mapNotNull { provider ->
             runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
         }.maxByOrNull { it.time }
 
     private fun finishLocationRequest(location: Location?) {
         if (!callbackUsed.compareAndSet(false, true)) return
+
         locationButton.isEnabled = true
+        locationButton.alpha = 1f
+
         if (location == null) {
-            status.text = "Could not get a location fix. Try again with Location enabled."
+            status.text = "Couldn't get a location fix"
             return
         }
 
         locationStore.save(location.latitude, location.longitude)
         wallpaperButton.isEnabled = true
         wallpaperButton.alpha = 1f
-        status.text = "Location saved. Loading weather…"
+        status.text = "Loading local weather…"
         refreshAtmosynqWeather(location.latitude, location.longitude)
     }
 
-    private fun refreshAtmosynqWeather(latitude: Double, longitude: Double) {
+    private fun refreshAtmosynqWeather(
+        latitude: Double,
+        longitude: Double
+    ) {
         status.text = "Refreshing local weather…"
+
         Thread {
-            val result = runCatching { OpenMeteoClient().fetchReport(latitude, longitude) }
+            val result = runCatching {
+                val report = OpenMeteoClient().fetchReport(latitude, longitude)
+                val frames = (0..2).map { frameIndex ->
+                    WeatherWidgetSceneRenderer.renderHero(
+                        report.current,
+                        frameIndex
+                    )
+                }
+                report to frames
+            }
+
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                result.onSuccess { report ->
-                    renderWeather(report)
+
+                result.onSuccess { pair ->
+                    renderWeather(pair.first, pair.second)
                 }.onFailure {
-                    status.text = "Couldn't refresh weather right now. The live wallpaper will retry automatically."
+                    status.text = "Weather refresh failed • tap location to retry"
                 }
             }
         }.apply {
@@ -516,57 +629,74 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun renderWeather(report: WeatherReport) {
+    private fun renderWeather(
+        report: WeatherReport,
+        frames: List<Bitmap>
+    ) {
+        activeReport = report
+        replaceHeroFrames(frames)
+
         val current = report.current
         val today = report.daily.firstOrNull()
 
         currentTemperature.text = formatTemperature(current.temperatureC)
         currentCondition.text =
             "${WeatherCode.symbol(current.weatherCode, current.isDay)}  ${WeatherCode.description(current.weatherCode)}"
-        currentHighLow.text = today?.let {
-            "H ${formatTemperature(it.highC)}  •  L ${formatTemperature(it.lowC)}  •  ${it.precipitationProbabilityPct}% precip"
+
+        currentHighLow.text = today?.let { day ->
+            "H ${formatTemperature(day.highC)}  •  L ${formatTemperature(day.lowC)}  •  ${day.precipitationProbabilityPct}% precip"
         } ?: ""
 
         currentDetails.text = buildString {
-            append("Feels like ${formatTemperature(current.apparentTemperatureC)}  •  Humidity ${current.relativeHumidityPct.roundToInt()}%")
+            append(
+                "Feels ${formatTemperature(current.apparentTemperatureC)}  •  " +
+                    "Humidity ${current.relativeHumidityPct.roundToInt()}%"
+            )
             append("\nWind ${formatWind(current.windSpeedKmh)}")
             if (current.windGustKmh > current.windSpeedKmh + 2.0) {
                 append("  •  Gusts ${formatWind(current.windGustKmh)}")
             }
-            append("\nClouds ${current.cloudCoverPct.roundToInt()}%  •  Visibility ${formatVisibility(current.visibilityM)}")
-            append("\nPrecipitation now ${formatPrecipitation(current.precipitationMm)}")
+            append("  •  Visibility ${formatVisibility(current.visibilityM)}")
+            append("\nPrecipitation ${formatPrecipitation(current.precipitationMm)}")
+
             val sunrise = formatClock(current.sunriseIsoLocal)
             val sunset = formatClock(current.sunsetIsoLocal)
             if (sunrise != null || sunset != null) {
-                append("\n")
+                append("  •  ")
                 if (sunrise != null) append("Sunrise $sunrise")
-                if (sunrise != null && sunset != null) append("  •  ")
+                if (sunrise != null && sunset != null) append(" / ")
                 if (sunset != null) append("Sunset $sunset")
             }
         }
 
-        activeReport = report
-        rebuildHeroFrames(current)
-
         renderHourly(report)
         renderDaily(report)
+        applyMotionMode()
 
-        val zone = runCatching { ZoneId.of(current.timezone) }.getOrDefault(ZoneId.systemDefault())
+        val zone = runCatching {
+            ZoneId.of(current.timezone)
+        }.getOrDefault(ZoneId.systemDefault())
+
         val updated = Instant.ofEpochMilli(current.fetchedAtEpochMs)
             .atZone(zone)
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
-        status.text = "Local weather synced • $updated"
+
+        status.text = "Synced • $updated"
     }
 
     private fun renderHourly(report: WeatherReport) {
         hourlyContainer.removeAllViews()
         val upcoming = nextHourly(report)
+
         if (upcoming.isEmpty()) {
             hourlySection.visibility = View.GONE
             return
         }
 
-        val zone = runCatching { ZoneId.of(report.current.timezone) }.getOrDefault(ZoneId.systemDefault())
+        val zone = runCatching {
+            ZoneId.of(report.current.timezone)
+        }.getOrDefault(ZoneId.systemDefault())
+
         val currentHour = LocalDateTime.ofInstant(Instant.now(), zone)
             .withMinute(0)
             .withSecond(0)
@@ -574,72 +704,107 @@ class MainActivity : Activity() {
 
         upcoming.forEach { hour ->
             val parsed = parseLocalDateTime(hour.timeIsoLocal)
-            val label = if (parsed == currentHour) {
-                "Now"
-            } else {
-                parsed?.format(DateTimeFormatter.ofPattern("h a", Locale.getDefault())) ?: "--"
-            }
+            val label =
+                if (parsed == currentHour) {
+                    "Now"
+                } else {
+                    parsed?.format(
+                        DateTimeFormatter.ofPattern("h a", Locale.getDefault())
+                    ) ?: "--"
+                }
+
             hourlyContainer.addView(hourCard(hour, label))
         }
+
         hourlySection.visibility = View.VISIBLE
     }
 
     private fun nextHourly(report: WeatherReport): List<HourlyForecast> {
-        val zone = runCatching { ZoneId.of(report.current.timezone) }.getOrDefault(ZoneId.systemDefault())
+        val zone = runCatching {
+            ZoneId.of(report.current.timezone)
+        }.getOrDefault(ZoneId.systemDefault())
+
         val currentHour = LocalDateTime.ofInstant(Instant.now(), zone)
             .withMinute(0)
             .withSecond(0)
             .withNano(0)
+
         val future = report.hourly.filter { hour ->
-            parseLocalDateTime(hour.timeIsoLocal)?.let { !it.isBefore(currentHour) } == true
+            parseLocalDateTime(hour.timeIsoLocal)
+                ?.let { parsed -> !parsed.isBefore(currentHour) } == true
         }
+
         return (if (future.isNotEmpty()) future else report.hourly).take(12)
     }
 
-    private fun hourCard(hour: HourlyForecast, label: String): LinearLayout =
+    private fun hourCard(
+        hour: HourlyForecast,
+        label: String
+    ): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(10), dp(12), dp(10), dp(12))
-            background = roundedBackground(COLOR_CARD, 16)
+            background = roundedBackground(
+                COLOR_CARD_SOFT,
+                18,
+                COLOR_STROKE
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = label
-                textSize = 12.5f
-                setTextColor(COLOR_MUTED)
-                gravity = Gravity.CENTER
-            }, matchWrap())
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = label
+                    textSize = 12f
+                    setTextColor(COLOR_MUTED)
+                    gravity = Gravity.CENTER
+                },
+                matchWrap()
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = WeatherCode.symbol(hour.weatherCode, hour.isDay)
-                textSize = 24f
-                gravity = Gravity.CENTER
-                setPadding(0, dp(5), 0, dp(2))
-            }, matchWrap())
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = WeatherCode.symbol(hour.weatherCode, hour.isDay)
+                    textSize = 23f
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(4), 0, dp(1))
+                },
+                matchWrap()
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = formatTemperature(hour.temperatureC)
-                textSize = 18f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-            }, matchWrap())
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = formatTemperature(hour.temperatureC)
+                    textSize = 18f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                },
+                matchWrap()
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = "${hour.precipitationProbabilityPct}% precip"
-                textSize = 11.5f
-                setTextColor(COLOR_ACCENT)
-                gravity = Gravity.CENTER
-                setPadding(0, dp(4), 0, 0)
-            }, matchWrap())
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = "${hour.precipitationProbabilityPct}%"
+                    textSize = 11.5f
+                    setTextColor(COLOR_ACCENT)
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(3), 0, 0)
+                },
+                matchWrap()
+            )
         }.also { card ->
-            card.layoutParams = LinearLayout.LayoutParams(dp(96), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                marginEnd = dp(8)
-            }
+            card.layoutParams =
+                LinearLayout.LayoutParams(
+                    dp(90),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginEnd = dp(8)
+                }
         }
 
     private fun renderDaily(report: WeatherReport) {
         dailyContainer.removeAllViews()
+
         if (report.daily.isEmpty()) {
             dailySection.visibility = View.GONE
             return
@@ -648,60 +813,169 @@ class MainActivity : Activity() {
         report.daily.take(7).forEachIndexed { index, day ->
             dailyContainer.addView(dayRow(day, index))
             if (index < minOf(6, report.daily.lastIndex)) {
-                dailyContainer.addView(Space(this), LinearLayout.LayoutParams(1, dp(7)))
+                dailyContainer.addView(
+                    Space(this),
+                    LinearLayout.LayoutParams(1, dp(7))
+                )
             }
         }
+
         dailySection.visibility = View.VISIBLE
     }
 
-    private fun dayRow(day: DailyForecast, index: Int): LinearLayout =
+    private fun dayRow(
+        day: DailyForecast,
+        index: Int
+    ): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = roundedBackground(COLOR_CARD, 15)
+            background = roundedBackground(
+                COLOR_CARD_SOFT,
+                18,
+                COLOR_STROKE
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = dayLabel(day.dateIso, index)
-                textSize = 14f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.9f))
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = dayLabel(day.dateIso, index)
+                    textSize = 13.5f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    0.9f
+                )
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = "${WeatherCode.symbol(day.weatherCode)}  ${WeatherCode.description(day.weatherCode)}"
-                textSize = 13f
-                setTextColor(COLOR_TEXT_SECONDARY)
-                gravity = Gravity.START
-                maxLines = 2
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.8f))
+            addView(
+                TextView(this@MainActivity).apply {
+                    text =
+                        "${WeatherCode.symbol(day.weatherCode)}  " +
+                            WeatherCode.description(day.weatherCode)
+                    textSize = 12.5f
+                    setTextColor(COLOR_TEXT_SECONDARY)
+                    gravity = Gravity.START
+                    maxLines = 2
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1.85f
+                )
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = "${day.precipitationProbabilityPct}%"
-                textSize = 12f
-                setTextColor(COLOR_ACCENT)
-                gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(48), ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = "${day.precipitationProbabilityPct}%"
+                    textSize = 12f
+                    setTextColor(COLOR_ACCENT)
+                    gravity = Gravity.CENTER
+                },
+                LinearLayout.LayoutParams(
+                    dp(44),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
 
-            addView(TextView(this@MainActivity).apply {
-                text = "${formatTemperature(day.highC)} / ${formatTemperature(day.lowC)}"
-                textSize = 13f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                gravity = Gravity.END
-            }, LinearLayout.LayoutParams(dp(76), ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(
+                TextView(this@MainActivity).apply {
+                    text =
+                        "${formatTemperature(day.highC)} / ${formatTemperature(day.lowC)}"
+                    textSize = 13f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.END
+                },
+                LinearLayout.LayoutParams(
+                    dp(76),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
         }
 
-    private fun dayLabel(dateIso: String, index: Int): String {
+    private fun dayLabel(
+        dateIso: String,
+        index: Int
+    ): String {
         if (index == 0) return "Today"
         if (index == 1) return "Tomorrow"
+
         return runCatching {
-            LocalDate.parse(dateIso).format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault()))
+            LocalDate.parse(dateIso)
+                .format(
+                    DateTimeFormatter.ofPattern(
+                        "EEE",
+                        Locale.getDefault()
+                    )
+                )
         }.getOrDefault(dateIso)
     }
 
+    private fun motionTab(
+        label: String,
+        onClick: () -> Unit
+    ): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = 13.5f
+            gravity = Gravity.CENTER
+            setTypeface(typeface, Typeface.BOLD)
+            setOnClickListener { onClick() }
+        }
+
+    private fun styleMotionTab(
+        view: TextView,
+        active: Boolean
+    ) {
+        view.setTextColor(if (active) Color.WHITE else COLOR_MUTED)
+        view.background = roundedBackground(
+            if (active) COLOR_SEGMENT_ACTIVE else Color.TRANSPARENT,
+            18,
+            if (active) COLOR_SEGMENT_STROKE else Color.TRANSPARENT
+        )
+    }
+
+    private fun premiumButton(
+        label: String,
+        primary: Boolean,
+        onClick: () -> Unit
+    ): Button =
+        Button(this).apply {
+            text = label
+            textSize = 14f
+            isAllCaps = false
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(
+                if (primary) {
+                    Color.rgb(4, 18, 32)
+                } else {
+                    Color.WHITE
+                }
+            )
+            background = roundedBackground(
+                if (primary) COLOR_PRIMARY else COLOR_BUTTON_BG,
+                18,
+                if (primary) COLOR_PRIMARY else COLOR_STROKE
+            )
+            stateListAnimator = null
+            minHeight = 0
+            minWidth = 0
+            setPadding(dp(16), 0, dp(16), 0)
+            setOnClickListener { onClick() }
+        }
+
     private fun formatTemperature(celsius: Double): String {
-        val value = if (usesUsUnits) celsius * 9.0 / 5.0 + 32.0 else celsius
+        val value =
+            if (usesUsUnits) {
+                celsius * 9.0 / 5.0 + 32.0
+            } else {
+                celsius
+            }
+
         return "${value.roundToInt()}°"
     }
 
@@ -714,196 +988,156 @@ class MainActivity : Activity() {
 
     private fun formatVisibility(meters: Double): String =
         if (usesUsUnits) {
-            String.format(Locale.US, "%.1f mi", meters / 1609.344)
+            String.format(
+                Locale.US,
+                "%.1f mi",
+                meters / 1609.344
+            )
         } else {
-            String.format(Locale.getDefault(), "%.1f km", meters / 1000.0)
+            String.format(
+                Locale.getDefault(),
+                "%.1f km",
+                meters / 1000.0
+            )
         }
 
     private fun formatPrecipitation(mm: Double): String =
         if (usesUsUnits) {
-            String.format(Locale.US, "%.2f in", mm / 25.4)
+            String.format(
+                Locale.US,
+                "%.2f in",
+                mm / 25.4
+            )
         } else {
-            String.format(Locale.getDefault(), "%.1f mm", mm)
+            String.format(
+                Locale.getDefault(),
+                "%.1f mm",
+                mm
+            )
         }
 
     private fun formatClock(value: String?): String? {
         val parsed = parseLocalDateTime(value ?: return null) ?: return null
-        return parsed.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+        return parsed.format(
+            DateTimeFormatter.ofPattern(
+                "h:mm a",
+                Locale.getDefault()
+            )
+        )
     }
 
     private fun parseLocalDateTime(value: String): LocalDateTime? =
-        runCatching { LocalDateTime.parse(value) }.getOrNull()
+        runCatching {
+            LocalDateTime.parse(value)
+        }.getOrNull()
 
-    private fun sectionTitle(text: String) = TextView(this).apply {
-        this.text = text
-        textSize = 17f
-        setTypeface(typeface, Typeface.BOLD)
-        setTextColor(Color.WHITE)
-        setPadding(dp(2), dp(12), 0, dp(9))
-    }
+    private fun sectionTitle(text: String): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = 17f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            setPadding(dp(2), dp(12), 0, dp(9))
+        }
 
-    private fun roundedBackground(color: Int, radiusDp: Int, strokeColor: Int? = null) =
+    private fun roundedBackground(
+        color: Int,
+        radiusDp: Int,
+        strokeColor: Int? = null
+    ): GradientDrawable =
         GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radiusDp).toFloat()
-            if (strokeColor != null) {
+
+            if (strokeColor != null && strokeColor != Color.TRANSPARENT) {
                 setStroke(dp(1), strokeColor)
             }
         }
 
-    private fun matchWrap() =
-        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
-
-    private fun motionTab(label: String, onClick: () -> Unit) =
-        TextView(this).apply {
-            text = label
-            textSize = 14f
-            setTypeface(typeface, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { onClick() }
-        }
-
-    private fun setMotionMode(animated: Boolean) {
-        if (motionStore.isAnimated() == animated) return
-        motionStore.setAnimated(animated)
-        applyMotionMode()
-        sendBroadcast(
-            Intent(this, AtmosynqWidgetProvider::class.java)
-                .setAction(AtmosynqWidgetProvider.ACTION_REFRESH)
+    private fun matchWrap(): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        status.text = if (animated) "Animated weather scenes enabled" else "Static weather scenes enabled"
-    }
 
-    private fun applyMotionMode() {
-        if (!::animatedTab.isInitialized || !::staticTab.isInitialized) return
-        val animated = motionStore.isAnimated()
-
-        animatedTab.background = roundedBackground(
-            if (animated) COLOR_SEGMENT_SELECTED else Color.TRANSPARENT,
-            18
-        )
-        staticTab.background = roundedBackground(
-            if (!animated) COLOR_SEGMENT_SELECTED else Color.TRANSPARENT,
-            18
-        )
-        animatedTab.setTextColor(if (animated) Color.WHITE else COLOR_MUTED)
-        staticTab.setTextColor(if (!animated) Color.WHITE else COLOR_MUTED)
-
-        activeReport?.current?.let { rebuildHeroFrames(it) }
-    }
-
-    private fun rebuildHeroFrames(snapshot: com.uglygameface.atmosynq.weather.WeatherSnapshot) {
-        heroHandler.removeCallbacks(heroRunnable)
-        val animated = motionStore.isAnimated()
-        val indices = if (animated) {
-            listOf(0, 1, 2)
-        } else {
-            listOf(if (snapshot.weatherCode in setOf(95, 96, 97, 99)) 1 else 0)
-        }
-
-        heroFrames = indices.map { WeatherWidgetSceneRenderer.render(snapshot, it) }
-        heroFrameIndex = 0
-        showHeroFrame(0, animate = false)
-
-        if (animated && heroFrames.size > 1) {
-            heroHandler.postDelayed(heroRunnable, HERO_FRAME_MS)
-        }
-    }
-
-    private fun showHeroFrame(index: Int, animate: Boolean) {
-        val bitmap = heroFrames.getOrNull(index) ?: return
-        heroScene.animate().cancel()
-
-        if (!animate) {
-            heroScene.setImageBitmap(bitmap)
-            heroScene.alpha = 1f
-            return
-        }
-
-        heroScene.animate()
-            .alpha(0.70f)
-            .setDuration(140L)
-            .withEndAction {
-                if (isFinishing || isDestroyed) return@withEndAction
-                heroScene.setImageBitmap(bitmap)
-                heroScene.animate()
-                    .alpha(1f)
-                    .setDuration(180L)
-                    .start()
-            }
-            .start()
-    }
-
-    private fun premiumButton(label: String, primary: Boolean, onClick: () -> Unit) =
-        Button(this).apply {
-            text = label
-            isAllCaps = false
-            textSize = 14.5f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.WHITE)
-            backgroundTintList = null
-            background = roundedBackground(
-                if (primary) COLOR_BUTTON_PRIMARY else COLOR_BUTTON_SECONDARY,
-                18,
-                if (primary) COLOR_BUTTON_PRIMARY_STROKE else COLOR_STROKE
-            )
-            elevation = dp(1).toFloat()
-            stateListAnimator = null
-            setPadding(dp(16), 0, dp(16), 0)
-            setOnClickListener { onClick() }
-        }
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).roundToInt()
 
     private fun requestPinWidget() {
         val manager = AppWidgetManager.getInstance(this)
+
         if (!manager.isRequestPinAppWidgetSupported) {
-            status.text = "Your launcher doesn't support direct widget pinning. Long-press the Home screen and choose Widgets → Atmosynq."
+            status.text = "Long-press Home → Widgets → Atmosynq"
             return
         }
 
-        val provider = ComponentName(this, AtmosynqWidgetProvider::class.java)
-        val requested = manager.requestPinAppWidget(provider, null, null)
-        status.text = if (requested) {
-            "Choose where to place the Atmosynq weather widget."
-        } else {
-            "The launcher didn't open the widget picker. Long-press the Home screen and choose Widgets → Atmosynq."
-        }
+        val provider =
+            ComponentName(
+                this,
+                AtmosynqWidgetProvider::class.java
+            )
+
+        val requested =
+            manager.requestPinAppWidget(
+                provider,
+                null,
+                null
+            )
+
+        status.text =
+            if (requested) {
+                "Choose where to place the widget"
+            } else {
+                "Long-press Home → Widgets → Atmosynq"
+            }
     }
 
     private fun openWallpaperPicker() {
-        val component = ComponentName(this, WeatherWallpaperService::class.java)
-        val direct = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
-            putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, component)
-        }
-        runCatching { startActivity(direct) }.onFailure {
-            startActivity(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
+        val component =
+            ComponentName(
+                this,
+                WeatherWallpaperService::class.java
+            )
+
+        val direct =
+            Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                putExtra(
+                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                    component
+                )
+            }
+
+        runCatching {
+            startActivity(direct)
+        }.onFailure {
+            startActivity(
+                Intent(
+                    WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER
+                )
+            )
         }
     }
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 420
-        private const val HERO_FRAME_MS = 1450L
+        private const val HERO_FRAME_MS = 1350L
 
-        private val COLOR_BACKGROUND = Color.rgb(5, 14, 25)
-        private val COLOR_BG_TOP = Color.rgb(7, 31, 54)
-        private val COLOR_CARD = Color.rgb(18, 39, 58)
-        private val COLOR_MUTED = Color.rgb(161, 187, 208)
-        private val COLOR_TEXT_SECONDARY = Color.rgb(220, 235, 246)
-        private val COLOR_ACCENT = Color.rgb(87, 205, 255)
+        private val THUNDER_CODES = setOf(95, 96, 97, 99)
 
-        private val COLOR_SEGMENT_TRACK = Color.rgb(9, 25, 40)
-        private val COLOR_SEGMENT_SELECTED = Color.rgb(18, 139, 207)
-        private val COLOR_STATUS_BG = Color.rgb(9, 23, 37)
-        private val COLOR_STROKE = Color.rgb(34, 69, 95)
-
-        private val COLOR_HERO_FALLBACK = Color.rgb(10, 31, 49)
-        private val COLOR_HERO_STROKE = Color.rgb(37, 118, 165)
-
-        private val COLOR_BUTTON_PRIMARY = Color.rgb(18, 137, 205)
-        private val COLOR_BUTTON_PRIMARY_STROKE = Color.rgb(82, 211, 255)
-        private val COLOR_BUTTON_SECONDARY = Color.rgb(17, 41, 59)
+        private val COLOR_BG_TOP = Color.rgb(7, 24, 43)
+        private val COLOR_BACKGROUND = Color.rgb(4, 12, 23)
+        private val COLOR_HERO_FALLBACK = Color.rgb(10, 28, 48)
+        private val COLOR_HERO_STROKE = Color.rgb(39, 112, 166)
+        private val COLOR_CARD_SOFT = Color.rgb(16, 37, 57)
+        private val COLOR_STATUS_BG = Color.rgb(11, 31, 50)
+        private val COLOR_SEGMENT_TRACK = Color.rgb(12, 31, 49)
+        private val COLOR_SEGMENT_ACTIVE = Color.rgb(23, 100, 155)
+        private val COLOR_SEGMENT_STROKE = Color.rgb(64, 189, 255)
+        private val COLOR_BUTTON_BG = Color.rgb(12, 33, 53)
+        private val COLOR_STROKE = Color.rgb(38, 69, 91)
+        private val COLOR_PRIMARY = Color.rgb(104, 212, 255)
+        private val COLOR_MUTED = Color.rgb(160, 186, 207)
+        private val COLOR_TEXT_SECONDARY = Color.rgb(218, 230, 239)
+        private val COLOR_ACCENT = Color.rgb(101, 207, 255)
     }
 }
