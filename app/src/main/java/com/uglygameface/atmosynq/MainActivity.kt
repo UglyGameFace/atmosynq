@@ -174,7 +174,7 @@ class MainActivity : Activity() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(7), dp(5), dp(13), dp(5))
+                setPadding(dp(6), dp(4), dp(11), dp(4))
                 background =
                     gradientBackground(
                         intArrayOf(
@@ -196,14 +196,14 @@ class MainActivity : Activity() {
         brandChip.addView(
             brandLogo,
             LinearLayout.LayoutParams(
-                dp(40),
-                dp(40)
+                dp(34),
+                dp(34)
             )
         )
         brandChip.addView(
             TextView(this).apply {
                 text = "Atmosynq"
-                textSize = 22f
+                textSize = 20f
                 setTextColor(Color.WHITE)
                 typeface =
                     Typeface.create(
@@ -224,7 +224,7 @@ class MainActivity : Activity() {
             brandChip,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(52),
+                dp(46),
                 Gravity.CENTER
             )
         )
@@ -257,7 +257,7 @@ class MainActivity : Activity() {
             brandHeader,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(56)
+                dp(50)
             ).apply {
                 bottomMargin = dp(3)
             }
@@ -266,7 +266,7 @@ class MainActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text = "Weather that comes alive."
-                textSize = 14f
+                textSize = 13f
                 setTextColor(COLOR_TEXT_SECONDARY)
                 gravity = Gravity.CENTER
                 setPadding(0, 0, 0, dp(11))
@@ -283,11 +283,11 @@ class MainActivity : Activity() {
         staticTab = motionTab("▣  Static") { setMotionMode(false) }
         motionSwitcher.addView(
             animatedTab,
-            LinearLayout.LayoutParams(0, dp(48), 1f)
+            LinearLayout.LayoutParams(0, dp(44), 1f)
         )
         motionSwitcher.addView(
             staticTab,
-            LinearLayout.LayoutParams(0, dp(48), 1f)
+            LinearLayout.LayoutParams(0, dp(44), 1f)
         )
         content.addView(
             motionSwitcher,
@@ -345,9 +345,9 @@ class MainActivity : Activity() {
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     intArrayOf(
-                        Color.argb(6, 2, 10, 24),
-                        Color.argb(14, 2, 10, 24),
-                        Color.argb(132, 2, 9, 20)
+                        Color.argb(94, 2, 10, 24),
+                        Color.argb(20, 2, 10, 24),
+                        Color.argb(154, 2, 9, 20)
                     )
                 )
             },
@@ -403,12 +403,31 @@ class MainActivity : Activity() {
             text = "⌖  Select a location"
             textSize = 13.5f
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(COLOR_LOCATION)
+            setTextColor(Color.rgb(219, 243, 255))
             gravity = Gravity.START
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
+            setPadding(dp(10), dp(5), dp(10), dp(5))
+            background =
+                roundedBackground(
+                    Color.argb(152, 2, 17, 31),
+                    14,
+                    Color.argb(105, 109, 196, 242)
+                )
+            setShadowLayer(
+                6f,
+                0f,
+                1f,
+                Color.argb(190, 0, 0, 0)
+            )
         }
-        heroPrimary.addView(heroLocation, matchWrap())
+        heroPrimary.addView(
+            heroLocation,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         currentTemperature = TextView(this).apply {
             text = "--°"
@@ -417,6 +436,12 @@ class MainActivity : Activity() {
             setTextColor(Color.WHITE)
             gravity = Gravity.START
             includeFontPadding = false
+            setShadowLayer(
+                10f,
+                0f,
+                2f,
+                Color.argb(210, 0, 0, 0)
+            )
             setPadding(0, dp(2), 0, 0)
         }
         heroPrimary.addView(currentTemperature, matchWrap())
@@ -427,15 +452,27 @@ class MainActivity : Activity() {
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
+            setShadowLayer(
+                8f,
+                0f,
+                2f,
+                Color.argb(210, 0, 0, 0)
+            )
         }
         heroPrimary.addView(currentCondition, matchWrap())
 
         currentHighLow = TextView(this).apply {
             text = "Use your location to bring the scene alive"
             textSize = 13.5f
-            setTextColor(COLOR_TEXT_SECONDARY)
+            setTextColor(Color.rgb(230, 239, 247))
             gravity = Gravity.START
-            setPadding(0, dp(4), 0, 0)
+            setPadding(0, dp(5), 0, 0)
+            setShadowLayer(
+                7f,
+                0f,
+                2f,
+                Color.argb(210, 0, 0, 0)
+            )
         }
         heroPrimary.addView(currentHighLow, matchWrap())
 
@@ -519,7 +556,7 @@ class MainActivity : Activity() {
             currentCard,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(500)
+                dp(486)
             ).apply {
                 bottomMargin = dp(14)
             }
