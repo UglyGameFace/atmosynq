@@ -52,6 +52,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var sceneDragging = false
+    private var scaleOccurred = false
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     private val baseTransforms = mutableMapOf<String, FloatArray>()
@@ -61,6 +62,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             context,
             object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                    scaleOccurred = true
                     parent?.requestDisallowInterceptTouchEvent(true)
                     return true
                 }
@@ -196,6 +198,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 lastTouchX = event.x
                 lastTouchY = event.y
                 sceneDragging = false
+                scaleOccurred = false
                 return true
             }
 
@@ -242,6 +245,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 val moved =
                     abs(event.x - downTouchX) + abs(event.y - downTouchY)
                 if (!sceneDragging &&
+                    !scaleOccurred &&
                     !scaleDetector.isInProgress &&
                     moved < touchSlop * 2f
                 ) {
