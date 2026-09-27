@@ -332,22 +332,38 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private fun configureQuality(v: ModelViewer) {
         val view = v.view
 
+        // Cinematic mobile preset. Dynamic resolution is deliberately kept enabled so
+        // these expensive effects can stay on without turning the phone into cookware.
         view.setPostProcessingEnabled(true)
         view.setShadowingEnabled(true)
         view.setScreenSpaceRefractionEnabled(true)
+        view.shadowType = FilamentView.ShadowType.PCSS
+        view.dithering = FilamentView.Dithering.TEMPORAL
 
         view.renderQuality = view.renderQuality.apply {
             hdrColorBuffer = FilamentView.QualityLevel.HIGH
         }
 
-        view.dynamicResolutionOptions = view.dynamicResolutionOptions.apply {
-            enabled = true
-            homogeneousScaling = true
-            minScale = 0.58f
-            maxScale = 1.0f
-            sharpness = 0.92f
-            quality = FilamentView.QualityLevel.HIGH
-        }
+        view.dynamicResolutionOptions =
+            view.dynamicResolutionOptions.apply {
+                enabled = true
+                homogeneousScaling = true
+                minScale = 0.68f
+                maxScale = 1.0f
+                sharpness = 0.94f
+                quality = FilamentView.QualityLevel.HIGH
+            }
+
+        view.temporalAntiAliasingOptions =
+            view.temporalAntiAliasingOptions.apply {
+                enabled = true
+                feedback = 0.12f
+                filterWidth = 1.0f
+                sharpness = 0.18f
+                hdr = true
+                preventFlickering = true
+                historyReprojection = true
+            }
 
         view.multiSampleAntiAliasingOptions =
             view.multiSampleAntiAliasingOptions.apply {
@@ -355,26 +371,53 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 sampleCount = 4
             }
 
-        view.antiAliasing = FilamentView.AntiAliasing.FXAA
+        // TAA owns post AA; leaving FXAA on as well softens the detailed scene.
+        view.antiAliasing = FilamentView.AntiAliasing.NONE
 
         view.ambientOcclusionOptions =
             view.ambientOcclusionOptions.apply {
                 enabled = true
+                radius = 0.42f
+                power = 1.05f
+                resolution = 1.0f
+                intensity = 1.18f
+                quality = FilamentView.QualityLevel.ULTRA
+                bentNormals = true
             }
 
         view.bloomOptions =
             view.bloomOptions.apply {
                 enabled = true
-                strength = 0.18f
+                strength = 0.11f
+                resolution = 480
+                levels = 7
+                quality = FilamentView.QualityLevel.HIGH
+                lensFlare = true
+                starburst = true
+                chromaticAberration = 0.006f
+                ghostCount = 3
             }
 
-        // Water and wet surfaces benefit dramatically from SSR. Dynamic resolution keeps
-        // the cost bounded on mobile.
         view.screenSpaceReflectionsOptions =
             view.screenSpaceReflectionsOptions.apply {
                 enabled = true
-                thickness = 0.18f
-                maxDistance = 4.0f
+                thickness = 0.12f
+                bias = 0.01f
+                maxDistance = 12.0f
+                stride = 1.0f
+            }
+
+        view.guardBandOptions =
+            view.guardBandOptions.apply {
+                enabled = true
+            }
+
+        view.vignetteOptions =
+            view.vignetteOptions.apply {
+                enabled = true
+                midPoint = 0.72f
+                roundness = 0.82f
+                feather = 0.58f
             }
     }
 
@@ -419,9 +462,14 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     }
 
     private fun configureCamera(v: ModelViewer) {
-        v.cameraFocalLength = 34f
-        v.cameraNear = 0.1f
-        v.cameraFar = 100f
+        v.cameraFocalLength = 31f
+        v.cameraNear = 0.08f
+        v.cameraFar = 140f
+        v.camera.setExposure(
+            5.6f,
+            1.0f / 90.0f,
+            110.0f
+        )
         applyCameraPose(v, 0f)
     }
 
@@ -479,39 +527,115 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private fun applySceneProfile(v: ModelViewer) {
         val asset = v.asset ?: return
         val tm = v.engine.transformManager
+
         val mountainScale = sceneProfile.mountainScale
+        val rollingScale =
+            when (sceneProfile.terrain) {
+                TerrainKind.FLAT -> 0.0f
+                TerrainKind.ROLLING -> 1.0f
+                TerrainKind.HIGHLAND -> 0.72f
+                TerrainKind.MOUNTAIN -> 0.45f
+            }
+
+        val cityScale =
+            when (sceneProfile.settlement) {
+                SettlementKind.METRO -> 1.0f
+                SettlementKind.CITY -> 0.82f
+                SettlementKind.TOWN -> 0.14f
+                SettlementKind.LOCAL -> 0.0f
+            }
+        val houseScale =
+            when (sceneProfile.settlement) {
+                SettlementKind.METRO -> 0.16f
+                SettlementKind.CITY -> 0.32f
+                SettlementKind.TOWN -> 1.0f
+                SettlementKind.LOCAL -> 0.72f
+            }
+        val streetScale =
+            when (sceneProfile.settlement) {
+                SettlementKind.METRO -> 1.0f
+                SettlementKind.CITY -> 1.0f
+                SettlementKind.TOWN -> 0.78f
+                SettlementKind.LOCAL -> 0.38f
+            }
+
+        val pineScale: Float
+        val broadleafScale: Float
+        val palmScale: Float
+        when (sceneProfile.latitudeBand) {
+            LatitudeBand.TROPICAL -> {
+                pineScale = 0.0f
+                broadleafScale = 0.58f
+                palmScale = 1.0f
+            }
+            LatitudeBand.WARM -> {
+                pineScale = 0.28f
+                broadleafScale = 1.0f
+                palmScale = 0.38f
+            }
+            LatitudeBand.TEMPERATE -> {
+                pineScale = 0.88f
+                broadleafScale = 1.0f
+                palmScale = 0.0f
+            }
+            LatitudeBand.COOL -> {
+                pineScale = 1.0f
+                broadleafScale = 0.52f
+                palmScale = 0.0f
+            }
+            LatitudeBand.POLAR -> {
+                pineScale = 0.46f
+                broadleafScale = 0.0f
+                palmScale = 0.0f
+            }
+        }
 
         tm.openLocalTransformTransaction()
         try {
-            MOUNTAINS.forEach { name ->
-                val base = baseTransforms[name] ?: return@forEach
-                val entity = asset.getFirstEntityByName(name)
-                if (entity == 0) return@forEach
-
-                val instance = tm.getInstance(entity)
-                if (instance == 0) return@forEach
-
-                val matrix = base.copyOf()
-
-                // Scale only the basis vectors; keep homogeneous / translation entries valid.
-                intArrayOf(
-                    0, 1, 2,
-                    4, 5, 6,
-                    8, 9, 10
-                ).forEach { index ->
-                    matrix[index] = base[index] * mountainScale
-                }
-
-                // Lowland locations push the prototype peaks below the horizon entirely.
-                // Highland / mountain places retain progressively more of the 3D terrain.
-                matrix[13] =
-                    base[13] -
-                        (1f - mountainScale) * 5.4f
-
-                tm.setTransform(instance, matrix)
-            }
+            applyEntityGroup(asset, tm, MOUNTAINS, mountainScale, 7.0f)
+            applyEntityGroup(asset, tm, ROLLING_HILLS, rollingScale, 5.0f)
+            applyEntityGroup(asset, tm, CITY_PARTS, cityScale, 8.0f)
+            applyEntityGroup(asset, tm, HOUSE_PARTS, houseScale, 6.0f)
+            applyEntityGroup(asset, tm, STREET_PARTS, streetScale, 5.0f)
+            applyEntityGroup(asset, tm, PINE_PARTS, pineScale, 7.0f)
+            applyEntityGroup(asset, tm, BROADLEAF_PARTS, broadleafScale, 7.0f)
+            applyEntityGroup(asset, tm, PALM_PARTS, palmScale, 7.0f)
         } finally {
             tm.commitLocalTransformTransaction()
+        }
+    }
+
+    private fun applyEntityGroup(
+        asset: com.google.android.filament.gltfio.FilamentAsset,
+        tm: com.google.android.filament.TransformManager,
+        names: List<String>,
+        scale: Float,
+        hiddenDrop: Float
+    ) {
+        val safeScale = scale.coerceIn(0f, 1f)
+        names.forEach { name ->
+            val base = baseTransforms[name] ?: return@forEach
+            val entity = asset.getFirstEntityByName(name)
+            if (entity == 0) return@forEach
+            val instance = tm.getInstance(entity)
+            if (instance == 0) return@forEach
+
+            val matrix = base.copyOf()
+            val visibleScale =
+                if (safeScale < 0.02f) 0.001f else safeScale
+
+            intArrayOf(
+                0, 1, 2,
+                4, 5, 6,
+                8, 9, 10
+            ).forEach { index ->
+                matrix[index] = base[index] * visibleScale
+            }
+
+            if (safeScale < 0.02f) {
+                matrix[13] = base[13] - hiddenDrop
+            }
+            tm.setTransform(instance, matrix)
         }
     }
 
@@ -619,11 +743,13 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         skybox?.setColor(skyR, skyG, skyB, 1f)
 
         val ambient = if (isDay) {
-            34_000f * (1f - cloud * 0.58f)
+            38_000f * (1f - cloud * 0.54f)
         } else {
-            8_500f * (1f - cloud * 0.28f)
+            9_500f * (1f - cloud * 0.25f)
         }
-        indirectLight?.intensity = ambient.coerceAtLeast(4_500f)
+        indirectLight?.intensity = ambient.coerceAtLeast(4_800f)
+
+        applyFilamentFog(v, cloud, isDay)
 
         val lightManager = v.engine.lightManager
         val lightInstance = lightManager.getInstance(v.light)
@@ -660,6 +786,43 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         }
     }
 
+    private fun applyFilamentFog(
+        v: ModelViewer,
+        cloud: Float,
+        isDay: Boolean
+    ) {
+        val weather = snapshot
+        val visibility = weather?.visibilityM ?: 100_000.0
+        val fogCode = weather?.weatherCode in setOf(45, 48)
+        val visibilityFog =
+            ((16_000.0 - visibility) / 16_000.0)
+                .coerceIn(0.0, 1.0)
+                .toFloat()
+        val haze =
+            maxOf(
+                if (fogCode) 0.72f else 0f,
+                visibilityFog,
+                if (cloud > 0.88f) 0.12f else 0f
+            )
+
+        v.view.fogOptions =
+            v.view.fogOptions.apply {
+                enabled = haze > 0.035f
+                distance = 4.0f + (1f - haze) * 8.0f
+                cutOffDistance = 95.0f
+                maximumOpacity = (0.30f + haze * 0.58f).coerceAtMost(0.90f)
+                height = 0.0f
+                heightFalloff = 0.22f
+                density = 0.012f + haze * 0.075f
+                inScatteringStart = 6.0f
+                inScatteringSize = 24.0f
+                fogColorFromIbl = false
+                color[0] = if (isDay) 0.48f else 0.08f
+                color[1] = if (isDay) 0.58f else 0.12f
+                color[2] = if (isDay) 0.68f else 0.22f
+            }
+    }
+
     private fun requestRender() {
         renderOnce = true
         scheduleFrame()
@@ -679,29 +842,72 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         private const val MAX_CAMERA_YAW = 0.42f
         private const val MAX_CAMERA_PITCH = 0.22f
 
-        private val CLOUDS = listOf(
-            "Cloud0",
-            "Cloud1",
-            "Cloud2"
-        )
+        private val CLOUDS =
+            (0 until 5).map { "Cloud$it" }
 
-        private val MOUNTAINS = listOf(
-            "Mountain0",
-            "Mountain1",
-            "Mountain2"
-        )
+        private val MOUNTAINS =
+            (0 until 3).map { "Mountain$it" }
 
-        private val ANIMATED_ENTITIES = listOf(
-            "Cloud0",
-            "Cloud1",
-            "Cloud2",
-            "RibbonCyan",
-            "RibbonPurple",
-            "Sun"
-        )
+        private val ROLLING_HILLS =
+            (0 until 3).map { "RollingHill$it" }
+
+        private val CITY_PARTS =
+            (0 until 22).flatMap { index ->
+                listOf(
+                    "CityBuilding$index",
+                    "CityGlass$index",
+                    "CityWindows$index"
+                )
+            }
+
+        private val HOUSE_PARTS =
+            (0 until 14).flatMap { index ->
+                listOf(
+                    "House$index",
+                    "HouseRoof$index",
+                    "HouseWindows$index"
+                )
+            }
+
+        private val PINE_PARTS =
+            (0 until 22).flatMap { index ->
+                listOf("Pine$index", "PineTrunk$index")
+            }
+
+        private val BROADLEAF_PARTS =
+            (0 until 18).flatMap { index ->
+                listOf("Broadleaf$index", "BroadleafTrunk$index")
+            }
+
+        private val PALM_PARTS =
+            (0 until 10).flatMap { index ->
+                listOf("Palm$index", "PalmTrunk$index")
+            }
+
+        private val STREET_PARTS =
+            (0 until 7).flatMap { index ->
+                listOf("StreetPole$index", "StreetLight$index")
+            }
+
+        private val ANIMATED_ENTITIES =
+            CLOUDS + listOf(
+                "RibbonCyan",
+                "RibbonPurple",
+                "Sun"
+            )
 
         private val TRACKED_ENTITIES =
-            ANIMATED_ENTITIES + MOUNTAINS
+            (
+                ANIMATED_ENTITIES +
+                    MOUNTAINS +
+                    ROLLING_HILLS +
+                    CITY_PARTS +
+                    HOUSE_PARTS +
+                    PINE_PARTS +
+                    BROADLEAF_PARTS +
+                    PALM_PARTS +
+                    STREET_PARTS
+                ).distinct()
 
         @Volatile
         private var nativeReady = false
