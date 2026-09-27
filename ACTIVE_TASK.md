@@ -1,13 +1,16 @@
 # Active Task
 
 ## Active task / outcome
-Validate the merged Atmosynq v0.2.0 official branding and app-wide Animated / Static visual modes on the real Android device, then root-cause any launcher/widget/wallpaper issues before starting the Apple target.
+Validate the merged Atmosynq v0.2.0 official branding and app-wide Animated / Static visual modes on the real Android device, then root-cause any launcher/widget/wallpaper issues before starting another implementation task.
 
 ## Current main
 Repository:
 `UglyGameFace/atmosynq`
 
-Functional main SHA:
+Current main SHA:
+`0a5e21f08459f2c656e04554e8538135ed43a943`
+
+Functional merged implementation SHA:
 `9fa5df52c499dbeaefcf26e7a3363f4732e443b3`
 
 Merged PR:
@@ -26,6 +29,13 @@ Actions run #32 passed:
 - unit tests
 - debug APK assembly
 - artifact upload
+
+The later documentation-only main commit `0a5e21f08459f2c656e04554e8538135ed43a943` has no workflow run/status attached. It does not change app code.
+
+## Status
+Implementation is merged and CI-validated.
+
+The active task is currently blocked on real-device validation. That device-only gate has not been completed from repository evidence, so the task is not marked complete and no unrelated implementation task has been started.
 
 ## Version
 - versionCode: 3
@@ -131,5 +141,43 @@ Install v0.2.0 and verify:
 ## Existing known boundary
 The public repo intentionally does not bundle the supplied third-party wallpaper video. Without an original/licensed private `scene_neutral.mp4`, the wallpaper uses the procedural fallback.
 
+## Backlog
+### Atmosynq Weather Portal / Xiaomi rear display
+Requested next implementation after the active v0.2.0 device-validation gate is cleared, unless the user explicitly issues a FORCE SWITCH.
+
+Goal:
+Turn supported rear/secondary phone displays into a sensor-reactive, forecast-scrubbable living weather environment instead of a conventional weather card.
+
+Planned product modes:
+- **NOW** — live weather scene synchronized to current conditions, time, sunrise/sunset, wind and precipitation.
+- **FUTURE** — physically scrub the forecast timeline; the scene transitions continuously through upcoming weather rather than swapping forecast cards.
+- **WORLD** — optional camera-backed AR-style forecast visualization over the user's surroundings.
+
+Core scene behavior:
+- precipitation/cloud movement follows real wind/storm direction when data supports it
+- gyroscope/accelerometer influence parallax and surface droplets
+- rain droplets can slide over a virtual glass layer
+- touch can clear condensation or brush visual snow
+- real sun/moon timing and moon phase feed the scene
+- camera-ring-aware HUD can display compact precipitation/temperature/UV/AQI progress arcs
+- face-down ambient mode can reduce text and behave as atmospheric art
+- Animated / Static accessibility preference remains authoritative
+
+Architecture requirement:
+- extend the existing shared Atmosynq weather/scene model rather than create a duplicate weather stack
+- introduce a platform-neutral rear/secondary-display scene contract
+- isolate Xiaomi-specific integration behind an adapter
+- **do not make Shizuku a required dependency**
+- prefer official Xiaomi/Android display paths when available
+- any optional privileged/Shizuku bridge must remain a separable enthusiast adapter, never the core renderer
+
+Validation requirement before claiming Xiaomi support:
+- compile/unit tests
+- existing widget/wallpaper regression suite
+- secondary-display rendering tests where testable
+- real Xiaomi hardware validation
+- battery/thermal behavior
+- confirm current official Xiaomi API/whitelisting path before store-facing claims
+
 ## Next step
-Run the v0.2.0 device test from the validated APK. Use screenshots/video and exact observed behavior to root-cause anything that still looks wrong. Do not begin the Apple WidgetKit/ActivityKit target until this Android branding/motion pass is stable.
+Complete the v0.2.0 real-device validation gate. Root-cause any observed Android launcher/widget/wallpaper problems before beginning the Weather Portal implementation.
