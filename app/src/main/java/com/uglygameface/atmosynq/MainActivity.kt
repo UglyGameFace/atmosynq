@@ -266,7 +266,7 @@ class MainActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text = "Weather that comes alive."
-                textSize = if (primary) 16f else 14f
+                textSize = 14f
                 setTextColor(COLOR_TEXT_SECONDARY)
                 gravity = Gravity.CENTER
                 setPadding(0, 0, 0, dp(11))
@@ -423,7 +423,7 @@ class MainActivity : Activity() {
 
         currentCondition = TextView(this).apply {
             text = "Weather not synced"
-            textSize = 21f
+            textSize = 23f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
@@ -1663,7 +1663,7 @@ class MainActivity : Activity() {
     ): Button =
         Button(this).apply {
             text = label
-            textSize = 14f
+            textSize = if (primary) 16f else 14f
             isAllCaps = false
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
