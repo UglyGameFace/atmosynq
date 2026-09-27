@@ -112,10 +112,11 @@ class MainActivity : Activity() {
             )
         )
 
-        val brandChip = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(8), dp(5), dp(14), dp(5))
+        val brandChip = ImageView(this).apply {
+            setImageResource(R.drawable.atmosynq_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "Atmosynq"
+            setPadding(dp(8), dp(6), dp(8), dp(6))
             background = gradientBackground(
                 intArrayOf(
                     Color.rgb(6, 27, 52),
@@ -125,35 +126,12 @@ class MainActivity : Activity() {
                 24,
                 COLOR_BRAND_STROKE
             )
-            contentDescription = "Atmosynq"
         }
-        brandChip.addView(
-            ImageView(this).apply {
-                setImageResource(R.drawable.atmosynq_mark)
-                scaleType = ImageView.ScaleType.CENTER_CROP
-            },
-            LinearLayout.LayoutParams(dp(42), dp(42)).apply {
-                marginEnd = dp(8)
-            }
-        )
-        brandChip.addView(
-            TextView(this).apply {
-                text = "Atmosynq"
-                textSize = 20f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                includeFontPadding = false
-            },
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
         content.addView(
             brandChip,
             LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(54)
+                dp(190),
+                dp(58)
             ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
                 bottomMargin = dp(4)
