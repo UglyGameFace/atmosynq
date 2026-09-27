@@ -35,11 +35,6 @@ class WeatherHeroView(context: Context) : View(context) {
         }
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        removeCallbacks(null)
-    }
-
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val s = snapshot ?: return
