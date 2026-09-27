@@ -59,5 +59,8 @@ Then verify post-merge `main` CI and install that exact v0.2.2 APK.
 ## Existing boundary
 The public repo still does not ship third-party/copyrighted scene video. The live wallpaper uses the procedural fallback unless an original/licensed private scene is provided.
 
+## PR
+PR #6 — Fix missing logo and smooth dashboard weather animation
+
 ## Next step
 Run exact-head Android CI on the v0.2.2 repair, fix only real failures, merge when green, verify main, then provide the exact APK for device testing.
