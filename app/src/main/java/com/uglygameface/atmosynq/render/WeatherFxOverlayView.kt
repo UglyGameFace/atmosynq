@@ -9,6 +9,10 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.view.View
+import com.uglygameface.atmosynq.location.LatitudeZone
+import com.uglygameface.atmosynq.location.LocationSceneProfile
+import com.uglygameface.atmosynq.location.SettlementKind
+import com.uglygameface.atmosynq.location.TerrainKind
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import kotlin.math.cos
 import kotlin.math.floor
@@ -31,6 +35,7 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     private val path = Path()
 
     private var snapshot: WeatherSnapshot? = null
+    private var sceneProfile: LocationSceneProfile? = null
     private var animated = true
     private var startedAtNanos = System.nanoTime()
     private var parallaxX = 0f
@@ -50,6 +55,11 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     fun setWeather(snapshot: WeatherSnapshot?) {
         this.snapshot = snapshot
         startedAtNanos = System.nanoTime()
+        invalidate()
+    }
+
+    fun setSceneProfile(profile: LocationSceneProfile?) {
+        sceneProfile = profile
         invalidate()
     }
 
@@ -238,12 +248,12 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     ) {
         val w = width.toFloat()
         val h = height.toFloat()
+        val profile = sceneProfile
 
-        // Broken horizontal highlights keep the lower scene reading as wet water instead
-        // of a flat dark polygon. They move with wind and camera parallax.
+        // Wet highlights keep precipitation tied to the visible environment.
         repeat(24) { index ->
             val seed = hash(1_700 + index * 71)
-            val y = h * (0.56f + index / 24f * 0.34f)
+            val y = h * (0.58f + index / 24f * 0.31f)
             val travel = fract(seconds * (0.025f + wind * 0.018f) + index * 0.091f)
             val baseX = ((seed and 0x3ff) / 1023f) * w
             val x = (baseX + travel * w * 0.18f) % w
@@ -253,20 +263,11 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             val purple = index % 5 == 0
             strokePaint.color =
                 if (purple) {
-                    Color.argb(
-                        if (isDay) 24 else 42,
-                        184,
-                        105,
-                        255
-                    )
+                    Color.argb(if (isDay) 24 else 42, 184, 105, 255)
                 } else {
-                    Color.argb(
-                        if (isDay) 36 else 55,
-                        112,
-                        220,
-                        255
-                    )
+                    Color.argb(if (isDay) 36 else 55, 112, 220, 255)
                 }
+
             canvas.drawLine(
                 x + parallaxX * 10f,
                 y,
@@ -276,33 +277,271 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             )
         }
 
-        // Near silhouettes provide a strong depth cue and hide the "cardboard diorama"
-        // feeling of the prototype GLB without replacing Filament's actual 3D scene.
-        val treeAlpha =
-            if (isDay) {
-                (112f + cloud * 45f).toInt()
-            } else {
-                188
-            }
-
-        repeat(8) { index ->
-            val normalized = index / 7f
-            val leftX = w * (-0.035f + normalized * 0.25f) + parallaxX * 20f
-            val rightX = w - leftX
-            val size = h * (0.10f + (index % 4) * 0.018f)
-            val baseY = h * (0.91f + (index % 3) * 0.022f)
-            drawPine(canvas, leftX, baseY, size, treeAlpha)
-            drawPine(canvas, rightX, baseY, size * 0.94f, treeAlpha)
+        if (profile?.terrain == TerrainKind.ROLLING) {
+            drawRollingHorizon(canvas, isDay, h * 0.78f)
         }
+
+        when (profile?.settlement ?: SettlementKind.SMALL_TOWN) {
+            SettlementKind.METRO ->
+                drawCitySkyline(canvas, isDay, cloud, dense = true)
+            SettlementKind.CITY ->
+                drawCitySkyline(canvas, isDay, cloud, dense = false)
+            SettlementKind.TOWN ->
+                drawNeighborhood(canvas, isDay, dense = true)
+            SettlementKind.SMALL_TOWN ->
+                drawNeighborhood(canvas, isDay, dense = false)
+        }
+
+        drawLocationVegetation(
+            canvas = canvas,
+            isDay = isDay,
+            cloud = cloud,
+            zone = profile?.latitudeZone ?: LatitudeZone.TEMPERATE,
+            settlement = profile?.settlement ?: SettlementKind.SMALL_TOWN
+        )
 
         paint.style = Paint.Style.FILL
         paint.color = Color.argb(
-            if (isDay) 38 else 72,
+            if (isDay) 34 else 70,
             1,
             10,
             22
         )
         canvas.drawRect(0f, h * 0.955f, w, h, paint)
+    }
+
+    private fun drawRollingHorizon(
+        canvas: Canvas,
+        isDay: Boolean,
+        baseY: Float
+    ) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+
+        paint.style = Paint.Style.FILL
+        paint.color =
+            Color.argb(
+                if (isDay) 82 else 145,
+                12,
+                38,
+                50
+            )
+
+        path.reset()
+        path.moveTo(-w * 0.1f, h)
+        path.lineTo(-w * 0.1f, baseY)
+        path.cubicTo(
+            w * 0.18f,
+            baseY - h * 0.055f,
+            w * 0.34f,
+            baseY + h * 0.025f,
+            w * 0.52f,
+            baseY - h * 0.035f
+        )
+        path.cubicTo(
+            w * 0.70f,
+            baseY - h * 0.085f,
+            w * 0.84f,
+            baseY + h * 0.015f,
+            w * 1.1f,
+            baseY - h * 0.025f
+        )
+        path.lineTo(w * 1.1f, h)
+        path.close()
+        canvas.drawPath(path, paint)
+    }
+
+    private fun drawCitySkyline(
+        canvas: Canvas,
+        isDay: Boolean,
+        cloud: Float,
+        dense: Boolean
+    ) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val count = if (dense) 26 else 17
+        val baseY = h * 0.91f
+        val slot = w / count
+
+        repeat(count) { index ->
+            val seed = hash(3_000 + index * 97)
+            val widthFactor = 0.58f + ((seed and 0xff) / 255f) * 0.34f
+            val maxHeight = if (dense) 0.28f else 0.19f
+            val heightFactor =
+                0.055f +
+                    (((seed shr 8) and 0xff) / 255f) * maxHeight
+            val buildingWidth = slot * widthFactor
+            val buildingHeight = h * heightFactor
+            val x =
+                index * slot +
+                    (slot - buildingWidth) * 0.5f +
+                    parallaxX * (5f + index % 5)
+            val top = baseY - buildingHeight
+
+            paint.style = Paint.Style.FILL
+            paint.color =
+                Color.argb(
+                    if (isDay) {
+                        (118f + cloud * 38f).toInt()
+                    } else {
+                        205
+                    },
+                    3 + index % 3 * 3,
+                    19 + index % 4 * 3,
+                    32 + index % 5 * 3
+                )
+            canvas.drawRoundRect(
+                x,
+                top,
+                x + buildingWidth,
+                baseY,
+                buildingWidth * 0.06f,
+                buildingWidth * 0.06f,
+                paint
+            )
+
+            if (!isDay) {
+                val windowColor =
+                    if (index % 4 == 0) {
+                        Color.argb(112, 207, 143, 255)
+                    } else {
+                        Color.argb(120, 255, 209, 121)
+                    }
+                paint.color = windowColor
+                val rows = (buildingHeight / (h * 0.027f)).toInt().coerceIn(1, 7)
+                repeat(rows) { row ->
+                    val wy = top + h * 0.018f + row * h * 0.027f
+                    canvas.drawRect(
+                        x + buildingWidth * 0.20f,
+                        wy,
+                        x + buildingWidth * 0.34f,
+                        wy + h * 0.008f,
+                        paint
+                    )
+                    if (buildingWidth > slot * 0.65f) {
+                        canvas.drawRect(
+                            x + buildingWidth * 0.60f,
+                            wy,
+                            x + buildingWidth * 0.74f,
+                            wy + h * 0.008f,
+                            paint
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun drawNeighborhood(
+        canvas: Canvas,
+        isDay: Boolean,
+        dense: Boolean
+    ) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val count = if (dense) 11 else 8
+        val slot = w / count
+        val baseY = h * 0.925f
+
+        repeat(count) { index ->
+            val seed = hash(5_100 + index * 83)
+            val houseWidth = slot * (0.58f + (seed and 0xff) / 255f * 0.20f)
+            val houseHeight = h * (0.050f + ((seed shr 8) and 0xff) / 255f * 0.035f)
+            val x =
+                index * slot +
+                    (slot - houseWidth) * 0.5f +
+                    parallaxX * (8f + index % 4)
+            val top = baseY - houseHeight
+
+            paint.style = Paint.Style.FILL
+            paint.color =
+                Color.argb(
+                    if (isDay) 142 else 218,
+                    4,
+                    22,
+                    34
+                )
+            canvas.drawRect(x, top, x + houseWidth, baseY, paint)
+
+            path.reset()
+            path.moveTo(x - houseWidth * 0.10f, top)
+            path.lineTo(x + houseWidth * 0.50f, top - houseHeight * 0.50f)
+            path.lineTo(x + houseWidth * 1.10f, top)
+            path.close()
+            canvas.drawPath(path, paint)
+
+            if (!isDay && index % 2 == 0) {
+                paint.color = Color.argb(155, 255, 205, 124)
+                canvas.drawRect(
+                    x + houseWidth * 0.22f,
+                    top + houseHeight * 0.30f,
+                    x + houseWidth * 0.40f,
+                    top + houseHeight * 0.58f,
+                    paint
+                )
+            }
+        }
+    }
+
+    private fun drawLocationVegetation(
+        canvas: Canvas,
+        isDay: Boolean,
+        cloud: Float,
+        zone: LatitudeZone,
+        settlement: SettlementKind
+    ) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val count =
+            when (settlement) {
+                SettlementKind.METRO -> 3
+                SettlementKind.CITY -> 5
+                SettlementKind.TOWN -> 8
+                SettlementKind.SMALL_TOWN -> 11
+            }
+        val alpha =
+            if (isDay) {
+                (104f + cloud * 44f).toInt()
+            } else {
+                195
+            }
+
+        repeat(count) { index ->
+            val fraction =
+                if (count == 1) {
+                    0.5f
+                } else {
+                    index / (count - 1f)
+                }
+            val x =
+                w * (0.025f + fraction * 0.95f) +
+                    parallaxX * (14f + index % 4 * 4f)
+            val baseY = h * (0.94f + (index % 3) * 0.008f)
+            val size = h * (0.07f + (index % 4) * 0.012f)
+
+            when (zone) {
+                LatitudeZone.TROPICAL ->
+                    drawPalm(canvas, x, baseY, size, alpha)
+                LatitudeZone.WARM ->
+                    if (index % 3 == 0) {
+                        drawPalm(canvas, x, baseY, size * 0.88f, alpha)
+                    } else {
+                        drawBroadleaf(canvas, x, baseY, size, alpha)
+                    }
+                LatitudeZone.TEMPERATE ->
+                    if (index % 2 == 0) {
+                        drawBroadleaf(canvas, x, baseY, size, alpha)
+                    } else {
+                        drawPine(canvas, x, baseY, size, alpha)
+                    }
+                LatitudeZone.COOL ->
+                    drawPine(canvas, x, baseY, size, alpha)
+                LatitudeZone.POLAR ->
+                    if (index % 2 == 0) {
+                        drawPine(canvas, x, baseY, size * 0.72f, alpha)
+                    }
+            }
+        }
     }
 
     private fun drawPine(
@@ -337,6 +576,74 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             path.lineTo(x + half, tierY + tierHeight * 0.55f)
             path.close()
             canvas.drawPath(path, paint)
+        }
+    }
+
+    private fun drawBroadleaf(
+        canvas: Canvas,
+        x: Float,
+        baseY: Float,
+        size: Float,
+        alpha: Int
+    ) {
+        paint.style = Paint.Style.FILL
+        paint.color = Color.argb(alpha.coerceIn(0, 230), 3, 24, 30)
+        canvas.drawRect(
+            x - size * 0.045f,
+            baseY - size * 0.35f,
+            x + size * 0.045f,
+            baseY,
+            paint
+        )
+        canvas.drawOval(
+            x - size * 0.30f,
+            baseY - size,
+            x + size * 0.30f,
+            baseY - size * 0.28f,
+            paint
+        )
+        canvas.drawOval(
+            x - size * 0.42f,
+            baseY - size * 0.82f,
+            x + size * 0.12f,
+            baseY - size * 0.30f,
+            paint
+        )
+        canvas.drawOval(
+            x - size * 0.10f,
+            baseY - size * 0.86f,
+            x + size * 0.42f,
+            baseY - size * 0.32f,
+            paint
+        )
+    }
+
+    private fun drawPalm(
+        canvas: Canvas,
+        x: Float,
+        baseY: Float,
+        size: Float,
+        alpha: Int
+    ) {
+        strokePaint.style = Paint.Style.STROKE
+        strokePaint.strokeWidth = (size * 0.055f).coerceAtLeast(1f)
+        strokePaint.color = Color.argb(alpha.coerceIn(0, 230), 5, 27, 29)
+        canvas.drawLine(
+            x,
+            baseY,
+            x + size * 0.09f,
+            baseY - size * 0.72f,
+            strokePaint
+        )
+
+        val crownX = x + size * 0.09f
+        val crownY = baseY - size * 0.72f
+        repeat(6) { index ->
+            val angle = -2.75 + index * 0.62
+            val endX = crownX + cos(angle).toFloat() * size * 0.42f
+            val endY = crownY + sin(angle).toFloat() * size * 0.28f
+            strokePaint.strokeWidth = (size * 0.035f).coerceAtLeast(1f)
+            canvas.drawLine(crownX, crownY, endX, endY, strokePaint)
         }
     }
 
