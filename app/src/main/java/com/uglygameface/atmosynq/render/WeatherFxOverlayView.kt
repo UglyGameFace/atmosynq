@@ -10,8 +10,6 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.view.View
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
-import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
@@ -478,15 +476,14 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         canvas: Canvas,
         nowNanos: Long
     ) {
-        val iterator = pulses.iterator()
-        while (iterator.hasNext()) {
-            val pulse = iterator.next()
-            val age = (nowNanos - pulse.startedAtNanos) / 1_000_000_000f
-            if (age > 1.05f) {
-                iterator.remove()
-                continue
-            }
+        while (pulses.isNotEmpty()) {
+            val age = (nowNanos - pulses.first().startedAtNanos) / 1_000_000_000f
+            if (age <= 1.05f) break
+            pulses.removeFirst()
+        }
 
+        pulses.forEach { pulse ->
+            val age = (nowNanos - pulse.startedAtNanos) / 1_000_000_000f
             val t = (age / 1.05f).coerceIn(0f, 1f)
             val radius = 16f + width * 0.16f * t
             val alpha = ((1f - t) * 150f).toInt()
@@ -516,13 +513,9 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         x = x xor (x shl 13)
         x = x xor (x ushr 17)
         x = x xor (x shl 5)
-        return abs(x)
+        return x and Int.MAX_VALUE
     }
 
     private fun fract(value: Float): Float =
-        value - floor(value)
-
-    companion object {
-        private const val TAU = (PI * 2.0)
-    }
+        value - floor(value.toDouble()).toFloat()
 }
