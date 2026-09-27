@@ -244,66 +244,80 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     ) {
         val w = width.toFloat()
         val h = height.toFloat()
-        val profile = sceneProfile
 
-        // Wet highlights keep precipitation tied to the visible environment.
-        repeat(24) { index ->
+        // Geography now lives in the Filament environment kit. The overlay only adds
+        // optical/weather detail, otherwise we would put flat Canvas buildings back on
+        // top of real 3D buildings and recreate the exact fake look we are replacing.
+        repeat(28) { index ->
             val seed = hash(1_700 + index * 71)
-            val y = h * (0.58f + index / 24f * 0.31f)
-            val travel = fract(seconds * (0.025f + wind * 0.018f) + index * 0.091f)
+            val y = h * (0.60f + index / 28f * 0.30f)
+            val travel =
+                fract(
+                    seconds * (0.024f + wind * 0.020f) +
+                        index * 0.091f
+                )
             val baseX = ((seed and 0x3ff) / 1023f) * w
-            val x = (baseX + travel * w * 0.18f) % w
-            val length = w * (0.025f + ((seed shr 10) and 0xff) / 255f * 0.09f)
+            val x = (baseX + travel * w * 0.20f) % w
+            val length =
+                w *
+                    (
+                        0.020f +
+                            ((seed shr 10) and 0xff) /
+                            255f * 0.085f
+                        )
 
-            strokePaint.strokeWidth = 0.8f + (index % 3) * 0.45f
-            val purple = index % 5 == 0
+            strokePaint.strokeWidth = 0.7f + (index % 3) * 0.38f
+            val purple = index % 6 == 0
             strokePaint.color =
                 if (purple) {
-                    Color.argb(if (isDay) 24 else 42, 184, 105, 255)
+                    Color.argb(
+                        if (isDay) 17 else 31,
+                        184,
+                        105,
+                        255
+                    )
                 } else {
-                    Color.argb(if (isDay) 36 else 55, 112, 220, 255)
+                    Color.argb(
+                        if (isDay) 24 else 43,
+                        112,
+                        220,
+                        255
+                    )
                 }
 
             canvas.drawLine(
-                x + parallaxX * 10f,
+                x + parallaxX * 9f,
                 y,
                 (x + length).coerceAtMost(w),
-                y + sin(seconds * 0.7f + index) * 1.6f,
+                y + sin(seconds * 0.7f + index) * 1.3f,
                 strokePaint
             )
         }
 
-        if (profile.terrain == TerrainKind.ROLLING) {
-            drawRollingHorizon(canvas, isDay, h * 0.78f)
+        // A subtle contact haze blends rain/fog into the PBR scene without painting
+        // fake foreground silhouettes over the real geometry.
+        if (cloud > 0.70f) {
+            paint.style = Paint.Style.FILL
+            paint.shader =
+                LinearGradient(
+                    0f,
+                    h * 0.70f,
+                    0f,
+                    h,
+                    Color.argb(
+                        ((cloud - 0.70f) * 70f)
+                            .toInt()
+                            .coerceIn(0, 24),
+                        137,
+                        180,
+                        204
+                    ),
+                    Color.TRANSPARENT,
+                    Shader.TileMode.CLAMP
+                )
+            canvas.drawRect(0f, h * 0.70f, w, h, paint)
+            paint.shader = null
         }
-
-        when (profile.settlement) {
-            SettlementKind.METRO ->
-                drawCitySkyline(canvas, isDay, cloud, dense = true)
-            SettlementKind.CITY ->
-                drawCitySkyline(canvas, isDay, cloud, dense = false)
-            SettlementKind.TOWN ->
-                drawNeighborhood(canvas, isDay, dense = true)
-            SettlementKind.LOCAL ->
-                drawNeighborhood(canvas, isDay, dense = false)
-        }
-
-        drawLocationVegetation(
-            canvas = canvas,
-            isDay = isDay,
-            cloud = cloud,
-            zone = profile.latitudeBand,
-            settlement = profile.settlement
-        )
-
-        paint.style = Paint.Style.FILL
-        paint.color = Color.argb(
-            if (isDay) 34 else 70,
-            1,
-            10,
-            22
-        )
-        canvas.drawRect(0f, h * 0.955f, w, h, paint)
     }
 
     private fun drawRollingHorizon(
