@@ -9,6 +9,8 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.view.View
+import com.uglygameface.atmosynq.location.LocationSceneProfile
+import com.uglygameface.atmosynq.location.TerrainKind
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import kotlin.math.cos
 import kotlin.math.sin
@@ -17,8 +19,14 @@ import kotlin.random.Random
 class WeatherHeroView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var snapshot: WeatherSnapshot? = null
+    private var sceneProfile: LocationSceneProfile? = null
     private var animated = true
     private var startedAt = System.currentTimeMillis()
+
+    fun setSceneProfile(profile: LocationSceneProfile?) {
+        sceneProfile = profile
+        invalidate()
+    }
 
     fun setWeather(snapshot: WeatherSnapshot?) {
         this.snapshot = snapshot
@@ -442,7 +450,14 @@ class WeatherHeroView(context: Context) : View(context) {
         w: Float,
         h: Float
     ) {
-        val horizon = h * 0.67f
+        val horizon = horizon
+        val terrainStrength =
+            when (sceneProfile?.terrain) {
+                TerrainKind.MOUNTAIN -> 1.0f
+                TerrainKind.ROLLING -> 0.50f
+                TerrainKind.FLAT -> 0.12f
+                null -> 0.32f
+            }
         val shift = if (animated) {
             sin(t * 0.05f) * w * 0.004f
         } else {
@@ -453,27 +468,27 @@ class WeatherHeroView(context: Context) : View(context) {
             moveTo(-20f, horizon)
             cubicTo(
                 w * 0.12f + shift,
-                h * 0.52f,
+                horizon - (horizon - h * 0.52f) * terrainStrength,
                 w * 0.20f + shift,
-                h * 0.54f,
+                horizon - (horizon - h * 0.54f) * terrainStrength,
                 w * 0.34f,
-                h * 0.47f
+                horizon - (horizon - h * 0.47f) * terrainStrength
             )
             cubicTo(
                 w * 0.48f,
-                h * 0.55f,
+                horizon - (horizon - h * 0.55f) * terrainStrength,
                 w * 0.60f,
-                h * 0.50f,
+                horizon - (horizon - h * 0.50f) * terrainStrength,
                 w * 0.72f,
-                h * 0.46f
+                horizon - (horizon - h * 0.46f) * terrainStrength
             )
             cubicTo(
                 w * 0.84f,
-                h * 0.52f,
+                horizon - (horizon - h * 0.52f) * terrainStrength,
                 w * 0.94f,
-                h * 0.49f,
+                horizon - (horizon - h * 0.49f) * terrainStrength,
                 w + 20f,
-                h * 0.55f
+                horizon - (horizon - h * 0.55f) * terrainStrength
             )
             lineTo(w + 20f, horizon)
             close()
@@ -496,27 +511,27 @@ class WeatherHeroView(context: Context) : View(context) {
             moveTo(-20f, h * 0.74f)
             cubicTo(
                 w * 0.16f,
-                h * 0.59f,
+                horizon + (h * 0.59f - horizon) * terrainStrength,
                 w * 0.26f,
-                h * 0.67f,
+                horizon,
                 w * 0.40f,
-                h * 0.58f
+                horizon + (h * 0.58f - horizon) * terrainStrength
             )
             cubicTo(
                 w * 0.54f,
-                h * 0.68f,
+                horizon + (h * 0.68f - horizon) * terrainStrength,
                 w * 0.67f,
-                h * 0.61f,
+                horizon + (h * 0.61f - horizon) * terrainStrength,
                 w * 0.78f,
-                h * 0.57f
+                horizon + (h * 0.57f - horizon) * terrainStrength
             )
             cubicTo(
                 w * 0.90f,
-                h * 0.63f,
+                horizon + (h * 0.63f - horizon) * terrainStrength,
                 w * 0.96f,
-                h * 0.60f,
+                horizon + (h * 0.60f - horizon) * terrainStrength,
                 w + 20f,
-                h * 0.65f
+                horizon + (h * 0.65f - horizon) * terrainStrength
             )
             lineTo(w + 20f, h * 0.76f)
             lineTo(-20f, h * 0.76f)
