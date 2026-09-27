@@ -112,52 +112,49 @@ class MainActivity : Activity() {
             )
         )
 
-        val brandTile = FrameLayout(this).apply {
-            background = roundedBackground(Color.rgb(5, 18, 34), 24, Color.rgb(37, 116, 174))
-            clipToOutline = true
+        val brandChip = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), dp(5), dp(14), dp(5))
+            background = gradientBackground(
+                intArrayOf(
+                    Color.rgb(6, 27, 52),
+                    Color.rgb(12, 50, 83),
+                    Color.rgb(22, 34, 72)
+                ),
+                24,
+                COLOR_BRAND_STROKE
+            )
             contentDescription = "Atmosynq"
         }
-        brandTile.addView(
+        brandChip.addView(
             ImageView(this).apply {
                 setImageResource(R.mipmap.ic_launcher)
                 scaleType = ImageView.ScaleType.CENTER_CROP
             },
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
+            LinearLayout.LayoutParams(dp(42), dp(42)).apply {
+                marginEnd = dp(8)
+            }
         )
-        brandTile.addView(
-            View(this).apply {
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.TRANSPARENT, Color.argb(220, 3, 10, 20))
-                )
-            },
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(42),
-                Gravity.BOTTOM
-            )
-        )
-        brandTile.addView(
+        brandChip.addView(
             TextView(this).apply {
                 text = "Atmosynq"
-                textSize = 13.5f
+                textSize = 20f
                 setTypeface(typeface, Typeface.BOLD)
                 setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
                 includeFontPadding = false
             },
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(34),
-                Gravity.BOTTOM
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
             )
         )
         content.addView(
-            brandTile,
-            LinearLayout.LayoutParams(dp(104), dp(104)).apply {
+            brandChip,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                dp(54)
+            ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
                 bottomMargin = dp(4)
             }
@@ -166,10 +163,10 @@ class MainActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text = "Weather that comes alive."
-                textSize = 13.5f
+                textSize = 12.5f
                 setTextColor(COLOR_MUTED)
                 gravity = Gravity.CENTER
-                setPadding(0, dp(1), 0, dp(14))
+                setPadding(0, 0, 0, dp(10))
             },
             matchWrap()
         )
