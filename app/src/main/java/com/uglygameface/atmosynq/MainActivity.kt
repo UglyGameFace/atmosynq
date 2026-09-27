@@ -129,7 +129,7 @@ class MainActivity : Activity() {
         }
         brandChip.addView(
             ImageView(this).apply {
-                setImageResource(R.mipmap.ic_launcher)
+                setImageResource(R.drawable.atmosynq_mark)
                 scaleType = ImageView.ScaleType.CENTER_CROP
             },
             LinearLayout.LayoutParams(dp(42), dp(42)).apply {
@@ -712,7 +712,7 @@ class MainActivity : Activity() {
             .atZone(zone)
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
 
-        status.text = "Synced • $updated"
+        status.text = "●  Synced • $updated"
     }
 
     private fun renderHourly(report: WeatherReport) {
