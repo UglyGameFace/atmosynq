@@ -1,7 +1,7 @@
 <resources>
     <style name="Theme.Atmosynq.Starting" parent="Theme.Atmosynq">
         <item name="android:windowSplashScreenBackground">@color/atmosynq_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/atmosynq_mark</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@color/atmosynq_icon_background</item>
     </style>
 </resources>
