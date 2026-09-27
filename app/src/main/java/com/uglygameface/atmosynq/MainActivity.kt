@@ -137,6 +137,10 @@ class MainActivity : Activity() {
             setOnClickListener {
                 motionStore.setAnimated(!motionStore.isAnimated())
                 applyMotionMode()
+                sendBroadcast(
+                    Intent(this@MainActivity, AtmosynqWidgetProvider::class.java)
+                        .setAction(AtmosynqWidgetProvider.ACTION_REFRESH)
+                )
                 status.text = if (motionStore.isAnimated()) {
                     "Animated visuals enabled"
                 } else {
