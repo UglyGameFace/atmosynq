@@ -1,153 +1,131 @@
 # Active Task
 
 ## Active task / outcome
-Turn Atmosynq's working Filament dashboard hero into a genuinely interactive, weather-reactive visual experience on Android, while preserving the production weather/location/widget/wallpaper paths.
+Make Atmosynq's Android weather hero location-aware worldwide: users can choose any city or postal code without granting device location, the dashboard shows the selected place, and the visual scene stops showing mountains unless local terrain supports them.
 
 ## Scope lock
-This is a continuation of the dashboard-renderer task. Do not switch to iOS, Xiaomi rear-display support, widget redesign, wallpaper-engine migration, API/provider work, or unrelated cleanup until this task passes its validation gate.
+This remains the same Atmosynq dashboard visual/location task. Do not switch to iOS, Xiaomi rear-display support, widget redesign, wallpaper-engine migration, or unrelated work until the current real-device gate passes.
 
 ## Production baseline
 - main SHA at branch start: `c713b52f62850ffa65441ba09f4377097115c797`
-- merged PR #11: `v0.4.0 migrate Atmosynq dashboard hero to Filament`
-- PR #11 exact-head CI run #65: passed
+- merged PR #11: v0.4.0 Filament dashboard hero
 - production version before this branch: 0.4.0 / versionCode 8
+- current draft PR: #12
 
 ## Current branch
 `feat/v0.4.1-interactive-weather-portal`
 
 ## Target version
-- versionCode: 9
-- versionName: 0.4.1
+- versionCode: 10
+- versionName: 0.4.2
 
-## Real-device finding / root cause
-The v0.4.0 Filament path is technically functioning on the Samsung test device, but the visual gate failed.
+## Root cause confirmed
+The Samsung screenshots proved the renderer itself works, but the visible environment was wrong:
+- the bundled Filament GLB is a tiny prototype with three mountain meshes, so every location visually inherited mountains
+- weather effects were location-independent
+- the dashboard displayed generic "Local weather" rather than a resolved place
+- the only obvious location path was device location, which is a poor privacy default for users who prefer city/postal entry
 
-The screenshots prove:
-- the Filament/TextureView path renders rather than presenting a blank surface
-- weather data and dashboard overlays still render
-- the scene itself looks primitive and low-detail
-- the shipped `app/src/main/assets/filament/atmos_scene.glb` is only a tiny prototype environment, so HDR/AO/bloom/SSR cannot manufacture missing art detail
-- the hero was passive: no direct drag, pinch, tap, camera, or weather-FX interaction
-- the dashboard composition hid too much of the scene behind dark scrims and oversized chrome
+This is not fixed by more bloom, AO, or rain. The scene needs a worldwide location context.
 
-The problem is therefore not another post-processing toggle. The renderer foundation works; the presentation and interaction layer were underbuilt.
-
-## Execution path
+## Authoritative execution path
 `MainActivity`
-→ creates `FilamentWeatherHeroView`
-→ Filament `ModelViewer` renders `assets/filament/atmos_scene.glb` on a `TextureView`
-→ live `WeatherSnapshot` drives lighting / scene motion
-→ `WeatherFxOverlayView` adds high-frequency weather atmosphere above the 3D scene
-→ touch gestures update the Filament camera and overlay parallax
-→ existing `WeatherHeroView` remains underneath as the graphics failure fallback
+→ user chooses worldwide city/postal search or approximate device location
+→ `GeocodingClient` resolves city/postal queries globally
+→ `TerrainContextClient` samples surrounding global elevation
+→ `LocationStore` persists selected place + terrain metadata
+→ `SceneProfileResolver` classifies settlement / terrain / latitude band
+→ `FilamentWeatherHeroView` scales prototype mountain geometry according to real terrain
+→ `WeatherFxOverlayView` renders settlement/vegetation/weather-aware foreground FX
+→ `WeatherHeroView` follows the same terrain profile if Filament falls back
+→ Open-Meteo weather continues to drive conditions
 
-## Changes on this branch
+## Worldwide location support
+There is no hard-coded city whitelist.
 
-### Interactive 3D portal
-`FilamentWeatherHeroView` now supports:
-- horizontal drag to look around the scene
-- bounded vertical camera tilt
-- pinch-to-zoom
-- tap atmosphere ripple
-- subtle animated camera drift when Animated mode is enabled
-- parallax coupling between camera movement and atmospheric FX
-- gesture arbitration that does not intentionally disable the dashboard's vertical ScrollView until a horizontal drag or pinch is confirmed
+Users can:
+- search a city
+- search city + region/state/province/country
+- search a postal/ZIP code
+- use approximate device location as an explicit alternative
 
-### Live atmospheric FX
-New `WeatherFxOverlayView` renders above Filament:
-- cyan/purple atmospheric ribbons
-- night stars
-- wind streaks
-- rain driven by rain/showers/precipitation and weather code
-- snow driven by snowfall/weather code
-- fog driven by fog code and visibility
-- thunder flashes / lightning
-- touch pulse rings
-- wet moving reflection streaks
-- parallax foreground pine silhouettes for stronger scene depth
-- cinematic vignette
-- Animated / Static support
+Search results retain:
+- latitude / longitude
+- locality
+- region
+- country / country code
+- postal match when available
+- population
+- feature code
+- elevation
 
-The FX layer uses the existing `WeatherSnapshot`; no duplicate weather provider or second state pipeline was introduced.
+Device location remains optional. City/postal search does not request GPS permission.
 
-### Dashboard composition
-The dashboard now:
-- gives the weather scene substantially more vertical space
-- shrinks the oversized brand mark
-- uses a compact sync pill
-- lightens the full-card scrim so the graphics remain visible
-- makes the bottom metric glass more transparent
-- adds an explicit `LIVE 3D • DRAG • PINCH • TAP` affordance
-- increases primary temperature presence without removing current metrics
+## Location-aware scene profile
+Scene selection is data-driven for every resolved location:
+- settlement: metro / city / town / local
+- terrain: flat / rolling / highland / mountain
+- latitude band: tropical / warm / temperate / cool / polar
 
-## Preserved behavior
-Must remain intact:
-- Open-Meteo weather retrieval
-- foreground location capture and private location persistence
-- Animated / Static preference
-- hourly forecast
-- 7-day forecast
-- widget pinning and current widget behavior
-- live-wallpaper picker
-- existing live wallpaper renderer
-- approved Atmosynq logo
-- Filament failure fallback to `WeatherHeroView`
+Terrain classification now uses local relief sampled around the chosen coordinates, not altitude alone.
 
-## Current status
-Implementation is complete on the feature branch, but the task is not closed because real-device validation is still required.
+Examples of intended behavior:
+- a flat dense city gets an urban silhouette and no mountain peaks
+- a flat town gets neighborhood/local foreground treatment
+- a tropical place gets warmer/tropical vegetation treatment
+- a high-relief location can retain mountain terrain
+- current rain/snow/fog/wind/thunder still layer on top
 
-Validation evidence before this documentation update:
-- code head: `310fafc043eb8de3a4fae8aac8109bf4202dbbf4`
-- GitHub Actions: Atmosynq Android CI run #68
-- unit tests: passed
-- Kotlin / Android debug build: passed
-- APK artifact upload: passed
-
-The documentation-only head created by this status update must also remain green before the branch is treated as the exact validated PR head.
+## Current implementation
+- worldwide city/postal search UI added
+- search works without location permission
+- approximate device-location option preserved
+- resolved place is displayed in the hero
+- selected place + scene metadata persist locally
+- global terrain sampling added
+- Filament mountain visibility/scale follows the location profile
+- atmospheric overlay follows settlement and latitude profile
+- Canvas fallback follows the same terrain profile
+- interactive drag / pinch / tap weather portal remains intact
+- existing weather, hourly forecast, daily forecast, widget pinning, and wallpaper picker remain in scope for regression checks
+- duplicate geocoding/scene implementations discovered during this task were consolidated
 
 ## Validation required
-Exact branch head must pass:
-- dependency resolution
+Exact final PR head must pass:
 - all JVM/unit tests
+- geocoder parsing tests
+- global scene-profile / terrain-relief regression tests
 - GLB integrity regression test
 - Kotlin compilation
 - Android resource linking
 - debug APK assembly
 - APK artifact upload
 
-Real-device gate after CI:
-1. Filament scene renders, not the Canvas fallback
-2. no black/white/transparent TextureView
-3. drag rotates the view without breaking vertical page scrolling
-4. pinch zoom is bounded and stable
-5. tap produces visible atmosphere feedback
-6. rain/snow/fog/thunder effects match current weather conditions
-7. Animated mode moves continuously; Static mode stays still except direct user interaction
-8. text/metrics remain readable but no longer bury the graphics
-9. background/resume does not crash or leak renderer state
-10. location, forecasts, widget and wallpaper picker remain working
-11. animation remains smooth enough on the Samsung test device
-12. heat/battery behavior is acceptable for dashboard use
+## Real-device gate
+Before merge, install the exact green APK and verify:
+1. city/postal search works without granting location permission
+2. multiple countries/cities resolve and can be selected
+3. selected city/region appears in the hero
+4. a flat place does not show mountain geometry
+5. a genuinely mountainous place does show meaningful terrain
+6. metro/city/town foreground treatment changes with selected place
+7. weather FX still match current conditions
+8. drag, pinch, tap and vertical page scrolling remain usable
+9. Animated / Static behavior remains correct
+10. location, forecasts, widget and wallpaper picker still work
+11. app survives background/resume
+12. performance, heat and battery are acceptable
+
+## Important visual limitation
+This pass makes Atmosynq globally location-aware; it does not claim to recreate every city's exact buildings or landmarks. The scene is generated from global place/terrain metadata so it scales worldwide instead of requiring a handcrafted asset for every municipality. Exact landmark-level city reconstruction is a separate asset/map-data problem and must not be falsely implied.
 
 ## Cleanup / conflict inspection
 Before merge:
-- inspect the affected render package for duplicate animation or gesture logic
-- ensure the Canvas fallback is still only a fallback and was not accidentally made a second live renderer after Filament succeeds
-- remove temporary debug code
-- inspect final diff for unrelated files and generated artifacts
-
-## Backlog after this gate
-The v0.4.1 interaction/atmosphere pass does not magically turn the tiny prototype GLB into final cinematic art. Once this branch is proven on-device, the same renderer can receive:
-- a production scenic environment asset replacing the prototype GLB
-- higher-detail terrain / foliage
-- physically wet materials and animated water normals
-- HDR image-based lighting
-- more advanced cloud volume/layer work
-- scene-wide lightning illumination
-- quality presets
-- eventual reuse in the live WallpaperService
-
-Those remain behind the current validation gate rather than being stacked blindly into this branch.
+- confirm only one global geocoder implementation remains
+- confirm only one scene-profile implementation remains
+- scan affected files for stale class names / duplicate paths
+- remove debug or temporary code
+- inspect final diff for unrelated/generated/secret-bearing changes
 
 ## Next step
-Confirm CI remains green on the final documentation-only branch head, inspect the final diff, then install the exact green APK on the Samsung for the real visual/interaction gate. Do not merge until the device check verifies the interaction, visuals, scroll arbitration, stability and preserved app paths.
+Get exact-head CI green, inspect the final diff, then test the resulting v0.4.2 APK on the Samsung against both a flat city and a mountainous city. Do not merge until the device gate passes.
