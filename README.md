@@ -25,10 +25,14 @@ Your Atmosynq surfaces can react to local weather, time of day, sunrise, sunset,
 - Android weather home-screen widget
 - Android 16 home / lock / both live-wallpaper instances
 - One-tap widget pinning on compatible launchers
-- Official Atmosynq vortex launcher/app/widget branding
+- Official phone-safe Atmosynq integrated logo with the name inside the mark
 - **Animated** and **Static** visual modes
 
 ## Weather Dashboard
+
+The Android dashboard is weather-first rather than brand-first. A compact integrated Atmosynq logo sits above a live current-weather hero scene, with Animated / Static shown as a segmented control instead of a full-width utility button.
+
+The current hero uses the same rendered weather state as the widget, so the app itself visually reacts to day/night, clouds, rain, snow, fog, and thunderstorms.
 
 The Android app currently shows:
 
@@ -127,7 +131,7 @@ Atmosynq now exposes one app-wide visual preference:
 - **Animated** — animated in-app brand treatment, moving/transitioning widget weather art, full live-wallpaper video/particles/weather transitions, and lightning animation.
 - **Static** — the same current weather styling without continuous motion; wallpaper video pauses, precipitation particles stay visible but frozen, lightning flashing stops, and the renderer uses a low refresh cadence.
 
-The Android launcher icon itself remains static because normal launchers do not run arbitrary continuous icon animation. The selected vortex design is used as the launcher/adaptive icon, splash mark, app branding, and widget brand mark.
+The Android launcher icon itself remains static because normal launchers do not run arbitrary continuous icon animation. Atmosynq now uses one integrated phone-safe logo, with the Atmosynq name inside the mark, across the launcher/adaptive icon, splash, app header, widget badge, and widget picker.
 
 ## Wallpaper Display Modes
 
