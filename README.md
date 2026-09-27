@@ -25,6 +25,8 @@ Your Atmosynq surfaces can react to local weather, time of day, sunrise, sunset,
 - Android weather home-screen widget
 - Android 16 home / lock / both live-wallpaper instances
 - One-tap widget pinning on compatible launchers
+- Official Atmosynq vortex launcher/app/widget branding
+- **Animated** and **Static** visual modes
 
 ## Weather Dashboard
 
@@ -94,7 +96,11 @@ Its rendered scene can show:
 
 The widget supports launcher resizing, manual refresh, system refresh scheduling, cached weather fallback, tap-to-open, and one-tap pinning from inside Atmosynq.
 
-The widget is a rendered weather snapshot surface, not a continuously running OpenGL loop. Full continuous animation remains in the live wallpaper.
+In **Animated** mode, the widget cycles three lightweight weather-rendered frames with fades. Rain/snow positions change, clouds shift, fog drifts, clear skies pulse subtly around the sun/moon, and thunderstorms include a lightning frame. This uses Android's supported `RemoteViews`/`ViewFlipper` path rather than pretending a widget can host the full OpenGL wallpaper engine.
+
+In **Static** mode, the widget freezes on a representative weather frame. Thunderstorms still retain visible storm/lightning artwork without repeated motion.
+
+Full continuous high-frame-rate animation remains in the live wallpaper.
 
 ### Home and lock wallpaper instances
 
@@ -113,6 +119,15 @@ Current profiles:
 - **Both:** 94% brightness, approximately 29 FPS target
 
 Older Android versions retain the normal live-wallpaper engine path.
+
+## Visual Motion Modes
+
+Atmosynq now exposes one app-wide visual preference:
+
+- **Animated** — animated in-app brand treatment, moving/transitioning widget weather art, full live-wallpaper video/particles/weather transitions, and lightning animation.
+- **Static** — the same current weather styling without continuous motion; wallpaper video pauses, precipitation particles stay visible but frozen, lightning flashing stops, and the renderer uses a low refresh cadence.
+
+The Android launcher icon itself remains static because normal launchers do not run arbitrary continuous icon animation. The selected vortex design is used as the launcher/adaptive icon, splash mark, app branding, and widget brand mark.
 
 ## Wallpaper Display Modes
 
