@@ -417,7 +417,7 @@ class MainActivity : Activity() {
             }, matchWrap())
 
             addView(TextView(this@MainActivity).apply {
-                text = WeatherCode.symbol(hour.weatherCode)
+                text = WeatherCode.symbol(hour.weatherCode, hour.isDay)
                 textSize = 24f
                 gravity = Gravity.CENTER
                 setPadding(0, dp(5), 0, dp(2))
