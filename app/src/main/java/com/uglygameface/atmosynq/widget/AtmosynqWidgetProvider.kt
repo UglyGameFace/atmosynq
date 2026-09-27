@@ -12,6 +12,7 @@ import android.widget.RemoteViews
 import com.uglygameface.atmosynq.MainActivity
 import com.uglygameface.atmosynq.R
 import com.uglygameface.atmosynq.location.LocationStore
+import com.uglygameface.atmosynq.preferences.MotionPreferenceStore
 import com.uglygameface.atmosynq.weather.OpenMeteoClient
 import com.uglygameface.atmosynq.weather.WeatherCode
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
@@ -90,8 +91,13 @@ class AtmosynqWidgetProvider : AppWidgetProvider() {
         lowC: Double?,
         precipitationPct: Int?
     ): RemoteViews {
-        val views = baseViews(context, widgetId)
-        views.setImageViewBitmap(R.id.widget_scene, WeatherWidgetSceneRenderer.render(snapshot))
+        val animated = MotionPreferenceStore(context).isAnimated()
+        val views = baseViews(context, widgetId, animated)
+        views.setImageViewBitmap(R.id.widget_scene_0, WeatherWidgetSceneRenderer.render(snapshot, 0))
+        if (animated) {
+            views.setImageViewBitmap(R.id.widget_scene_1, WeatherWidgetSceneRenderer.render(snapshot, 1))
+            views.setImageViewBitmap(R.id.widget_scene_2, WeatherWidgetSceneRenderer.render(snapshot, 2))
+        }
         views.setTextViewText(R.id.widget_temperature, formatTemperature(snapshot.temperatureC))
         views.setTextViewText(R.id.widget_condition, WeatherCode.description(snapshot.weatherCode))
 
@@ -113,7 +119,7 @@ class AtmosynqWidgetProvider : AppWidgetProvider() {
     }
 
     private fun emptyViews(context: Context, widgetId: Int): RemoteViews =
-        baseViews(context, widgetId).apply {
+        baseViews(context, widgetId, MotionPreferenceStore(context).isAnimated()).apply {
             setTextViewText(R.id.widget_temperature, "--°")
             setTextViewText(R.id.widget_condition, "Set your weather location")
             setTextViewText(R.id.widget_details, "Open Atmosynq to sync local weather")
@@ -121,15 +127,18 @@ class AtmosynqWidgetProvider : AppWidgetProvider() {
         }
 
     private fun errorViews(context: Context, widgetId: Int): RemoteViews =
-        baseViews(context, widgetId).apply {
+        baseViews(context, widgetId, MotionPreferenceStore(context).isAnimated()).apply {
             setTextViewText(R.id.widget_temperature, "--°")
             setTextViewText(R.id.widget_condition, "Weather unavailable")
             setTextViewText(R.id.widget_details, "Tap refresh to try again")
             setViewVisibility(R.id.widget_refresh, View.VISIBLE)
         }
 
-    private fun baseViews(context: Context, widgetId: Int): RemoteViews =
-        RemoteViews(context.packageName, R.layout.widget_atmosynq).apply {
+    private fun baseViews(context: Context, widgetId: Int, animated: Boolean): RemoteViews =
+        RemoteViews(
+            context.packageName,
+            if (animated) R.layout.widget_atmosynq else R.layout.widget_atmosynq_static
+        ).apply {
             val openApp = PendingIntent.getActivity(
                 context,
                 widgetId,
