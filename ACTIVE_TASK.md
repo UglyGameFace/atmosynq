@@ -62,5 +62,8 @@ The public repo still does not ship third-party/copyrighted scene video. The liv
 ## PR
 PR #8 — v0.2.2: restore logo and smooth live weather hero
 
+## Current validation
+PR #8 is open from the clean main-based repair branch. Exact-head CI is the current gate.
+
 ## Next step
 Run exact-head Android CI on the v0.2.2 repair, fix only real failures, merge when green, verify main, then provide the exact APK for device testing.
