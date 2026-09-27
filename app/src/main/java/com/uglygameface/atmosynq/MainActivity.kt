@@ -37,8 +37,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Space
 import android.widget.TextView
-import com.uglygameface.atmosynq.location.GlobalLocationClient
-import com.uglygameface.atmosynq.location.LocationCandidate
+import com.uglygameface.atmosynq.location.GeocodingClient
+import com.uglygameface.atmosynq.location.PlaceSearchResult
 import com.uglygameface.atmosynq.location.LocationSource
 import com.uglygameface.atmosynq.location.LocationStore
 import com.uglygameface.atmosynq.location.SavedLocation
@@ -672,7 +672,7 @@ class MainActivity : Activity() {
         Thread {
             val result =
                 runCatching {
-                    GlobalLocationClient().search(query)
+                    GeocodingClient().search(query = query, count = 12)
                 }
 
             runOnUiThread {
@@ -699,11 +699,11 @@ class MainActivity : Activity() {
 
     private fun showLocationResults(
         query: String,
-        places: List<LocationCandidate>
+        places: List<PlaceSearchResult>
     ) {
         val labels =
             places.map { place ->
-                place.displayLabel(query)
+                place.displayLabel()
             }.toTypedArray()
 
         AlertDialog.Builder(this)
@@ -719,7 +719,7 @@ class MainActivity : Activity() {
 
     private fun selectSearchedPlace(
         query: String,
-        place: LocationCandidate
+        place: PlaceSearchResult
     ) {
         status.text = "Building ${place.name} scene…"
         locationButton.isEnabled = false
@@ -742,13 +742,32 @@ class MainActivity : Activity() {
                     )
                 }
 
-            val base = place.toSavedLocation(query)
+            val normalizedQuery =
+                query.replace(" ", "").uppercase(Locale.ROOT)
+            val matchedPostal =
+                place.postcodes.firstOrNull { postcode ->
+                    postcode.replace(" ", "").uppercase(Locale.ROOT) ==
+                        normalizedQuery
+                }
+
             val saved =
-                base.copy(
+                SavedLocation(
+                    latitude = place.latitude,
+                    longitude = place.longitude,
+                    savedAtEpochMs = System.currentTimeMillis(),
+                    displayName = place.shortLabel(),
+                    locality = place.name,
+                    admin1 = place.admin1,
+                    countryCode = place.countryCode,
+                    country = place.country,
+                    postalCode = matchedPostal,
                     elevationM =
-                        base.elevationM
+                        place.elevationM
                             ?: terrain.centerElevationM,
-                    reliefM = terrain.reliefM
+                    reliefM = terrain.reliefM,
+                    population = place.population,
+                    featureCode = place.featureCode,
+                    source = LocationSource.SEARCH
                 )
 
             locationStore.save(saved)
@@ -900,8 +919,8 @@ class MainActivity : Activity() {
                 reverse.second
                     ?.let { query ->
                         runCatching {
-                            GlobalLocationClient()
-                                .search(query)
+                            GeocodingClient()
+                                .search(query = query, count = 12)
                                 .minByOrNull { candidate ->
                                     val dLat =
                                         candidate.latitude -
