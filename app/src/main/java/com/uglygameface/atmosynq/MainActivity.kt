@@ -133,11 +133,11 @@ class MainActivity : Activity() {
         content.addView(
             brandLogo,
             LinearLayout.LayoutParams(
-                dp(112),
-                dp(112)
+                dp(82),
+                dp(82)
             ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = dp(2)
+                bottomMargin = dp(1)
             }
         )
 
@@ -175,12 +175,19 @@ class MainActivity : Activity() {
         }
         content.addView(
             status,
-            matchWrap().apply { bottomMargin = dp(10) }
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(10)
+            }
         )
 
         val currentCard = FrameLayout(this).apply {
             background = roundedBackground(COLOR_HERO_FALLBACK, 28, COLOR_HERO_STROKE)
             clipToOutline = true
+            elevation = dp(8).toFloat()
         }
 
         heroScene = FilamentWeatherHeroView(this).apply {
@@ -200,9 +207,9 @@ class MainActivity : Activity() {
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     intArrayOf(
-                        Color.argb(24, 2, 10, 24),
-                        Color.argb(30, 2, 10, 24),
-                        Color.argb(190, 2, 9, 20)
+                        Color.argb(6, 2, 10, 24),
+                        Color.argb(14, 2, 10, 24),
+                        Color.argb(132, 2, 9, 20)
                     )
                 )
             },
@@ -210,6 +217,32 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
+        )
+
+        currentCard.addView(
+            TextView(this).apply {
+                text = "LIVE 3D  •  DRAG  •  PINCH  •  TAP"
+                textSize = 9.5f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(Color.rgb(202, 239, 255))
+                gravity = Gravity.CENTER
+                setPadding(dp(9), dp(6), dp(9), dp(6))
+                background = roundedBackground(
+                    Color.argb(150, 5, 21, 38),
+                    14,
+                    Color.argb(150, 82, 195, 255)
+                )
+                contentDescription =
+                    "Interactive live weather scene. Drag to look around, pinch to zoom, tap for atmosphere."
+            },
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.END
+            ).apply {
+                topMargin = dp(13)
+                rightMargin = dp(13)
+            }
         )
 
         val heroPrimary = LinearLayout(this).apply {
@@ -229,7 +262,7 @@ class MainActivity : Activity() {
 
         currentTemperature = TextView(this).apply {
             text = "--°"
-            textSize = 64f
+            textSize = 70f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
@@ -269,9 +302,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(10))
             background = roundedBackground(
-                Color.argb(188, 7, 22, 39),
+                Color.argb(142, 7, 22, 39),
                 20,
-                Color.argb(150, 87, 168, 220)
+                Color.argb(132, 87, 188, 235)
             )
         }
 
@@ -336,7 +369,7 @@ class MainActivity : Activity() {
             currentCard,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(360)
+                dp(430)
             ).apply {
                 bottomMargin = dp(14)
             }
