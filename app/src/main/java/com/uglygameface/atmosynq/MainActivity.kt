@@ -16,6 +16,7 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
