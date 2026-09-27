@@ -25,7 +25,7 @@ object WeatherWidgetSceneRenderer {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         drawSky(canvas, paint, snapshot)
-        drawSunOrMoon(canvas, paint, snapshot)
+        drawSunOrMoon(canvas, paint, snapshot, frameIndex)
         drawClouds(canvas, paint, snapshot, frameIndex)
 
         when {
@@ -57,15 +57,21 @@ object WeatherWidgetSceneRenderer {
         paint.shader = null
     }
 
-    private fun drawSunOrMoon(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot) {
+    private fun drawSunOrMoon(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
         if (snapshot.cloudCoverPct >= 88.0) return
-        val alpha = (220 - snapshot.cloudCoverPct * 1.7).toInt().coerceIn(40, 220)
+        val pulse = when (frameIndex % 3) {
+            1 -> 1.08f
+            2 -> 0.96f
+            else -> 1f
+        }
+        val alpha = ((220 - snapshot.cloudCoverPct * 1.7) * pulse).toInt().coerceIn(40, 235)
         paint.color = if (snapshot.isDay) {
             Color.argb(alpha, 255, 232, 151)
         } else {
             Color.argb(alpha, 225, 235, 255)
         }
-        canvas.drawCircle(590f, 92f, if (snapshot.isDay) 42f else 31f, paint)
+        val baseRadius = if (snapshot.isDay) 42f else 31f
+        canvas.drawCircle(590f, 92f, baseRadius * pulse, paint)
     }
 
     private fun drawClouds(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
@@ -130,16 +136,17 @@ object WeatherWidgetSceneRenderer {
         }
     }
 
-    private fun drawFog(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot) {
+    private fun drawFog(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
         val visibilityFactor = when {
             snapshot.visibilityM <= 500 -> 1f
             snapshot.visibilityM >= 10_000 -> 0.2f
             else -> (1.0 - (snapshot.visibilityM - 500.0) / 9_500.0).toFloat()
         }
         paint.color = Color.argb((48 + visibilityFactor * 90).toInt(), 225, 232, 235)
+        val drift = (frameIndex % 3 - 1) * 24f
         repeat(5) { index ->
             val y = 180f + index * 50f
-            canvas.drawRoundRect(-40f + index * 20f, y, WIDTH + 40f, y + 34f, 40f, 40f, paint)
+            canvas.drawRoundRect(-40f + index * 20f + drift, y, WIDTH + 40f + drift, y + 34f, 40f, 40f, paint)
         }
     }
 
