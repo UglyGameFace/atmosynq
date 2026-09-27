@@ -33,7 +33,7 @@ object WeatherWidgetSceneRenderer {
             isRain(snapshot.weatherCode) || snapshot.rainMm + snapshot.showersMm > 0.0 -> drawRain(canvas, paint, snapshot, frameIndex)
         }
 
-        if (isFog(snapshot.weatherCode) || snapshot.visibilityM < 8_000.0) drawFog(canvas, paint, snapshot)
+        if (isFog(snapshot.weatherCode) || snapshot.visibilityM < 8_000.0) drawFog(canvas, paint, snapshot, frameIndex)
         if (isThunder(snapshot.weatherCode) && frameIndex % 3 == 1) drawLightning(canvas, paint)
 
         drawVignette(canvas, paint)
