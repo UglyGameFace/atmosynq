@@ -89,6 +89,9 @@ class FilamentSceneAssetTest {
             "CityWindows0",
             "House0",
             "HouseRoof0",
+            "HouseGarage0",
+            "HouseDoor0",
+            "HouseChimney0",
             "Pine0",
             "Broadleaf0",
             "Palm0",
@@ -110,7 +113,11 @@ class FilamentSceneAssetTest {
             "Concrete",
             "Terrain",
             "Water",
-            "WindowGlow"
+            "WindowGlow",
+            "HouseSiding",
+            "Brick",
+            "Stucco",
+            "GarageDoor"
         ).forEach { material ->
             assertTrue(
                 "Production GLB missing required PBR material $material",
