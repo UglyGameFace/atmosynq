@@ -3,6 +3,7 @@ package com.uglygameface.atmosynq
 import android.Manifest
 import android.app.Activity
 import android.app.WallpaperManager
+import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -33,6 +34,7 @@ import com.uglygameface.atmosynq.weather.HourlyForecast
 import com.uglygameface.atmosynq.weather.OpenMeteoClient
 import com.uglygameface.atmosynq.weather.WeatherCode
 import com.uglygameface.atmosynq.weather.WeatherReport
+import com.uglygameface.atmosynq.widget.AtmosynqWidgetProvider
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -193,6 +195,13 @@ class MainActivity : Activity() {
             setOnClickListener { openWallpaperPicker() }
         }
         content.addView(wallpaperButton, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54)))
+
+        content.addView(Space(this), LinearLayout.LayoutParams(1, dp(10)))
+
+        content.addView(Button(this).apply {
+            text = "Add Atmosynq home widget"
+            setOnClickListener { requestPinWidget() }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54)))
 
         content.addView(TextView(this).apply {
             text = "Your saved coordinates stay on-device. Atmosynq only needs foreground location access to choose local weather; background location permission is not required."
@@ -558,6 +567,22 @@ class MainActivity : Activity() {
         LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
+
+    private fun requestPinWidget() {
+        val manager = AppWidgetManager.getInstance(this)
+        if (!manager.isRequestPinAppWidgetSupported) {
+            status.text = "Your launcher doesn't support direct widget pinning. Long-press the Home screen and choose Widgets → Atmosynq."
+            return
+        }
+
+        val provider = ComponentName(this, AtmosynqWidgetProvider::class.java)
+        val requested = manager.requestPinAppWidget(provider, null, null)
+        status.text = if (requested) {
+            "Choose where to place the Atmosynq weather widget."
+        } else {
+            "The launcher didn't open the widget picker. Long-press the Home screen and choose Widgets → Atmosynq."
+        }
+    }
 
     private fun openWallpaperPicker() {
         val component = ComponentName(this, WeatherWallpaperService::class.java)
