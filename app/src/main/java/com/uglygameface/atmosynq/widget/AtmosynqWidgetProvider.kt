@@ -93,7 +93,8 @@ class AtmosynqWidgetProvider : AppWidgetProvider() {
     ): RemoteViews {
         val animated = MotionPreferenceStore(context).isAnimated()
         val views = baseViews(context, widgetId, animated)
-        views.setImageViewBitmap(R.id.widget_scene_0, WeatherWidgetSceneRenderer.render(snapshot, 0))
+        val firstFrame = if (!animated && snapshot.weatherCode in setOf(95, 96, 97, 99)) 1 else 0
+        views.setImageViewBitmap(R.id.widget_scene_0, WeatherWidgetSceneRenderer.render(snapshot, firstFrame))
         if (animated) {
             views.setImageViewBitmap(R.id.widget_scene_1, WeatherWidgetSceneRenderer.render(snapshot, 1))
             views.setImageViewBitmap(R.id.widget_scene_2, WeatherWidgetSceneRenderer.render(snapshot, 2))
