@@ -34,8 +34,6 @@ Instead of showing a static wallpaper beside an unrelated weather widget, Atmosy
 
 Atmosynq maps real weather conditions directly into the visual scene.
 
-For example:
-
 - Rainfall controls rain density and splash frequency
 - Snowfall controls snow intensity
 - Wind changes cloud and precipitation movement
@@ -49,7 +47,7 @@ The wallpaper and weather dashboard use the same weather state so the visual sce
 
 ## Wallpaper Display Modes
 
-Users will be able to choose how much weather information appears directly on their wallpaper:
+Planned display modes:
 
 - **Clean** — animated scene only
 - **Minimal** — temperature and current condition
@@ -62,7 +60,7 @@ Weather information will also be repositionable so it does not cover important p
 Atmosynq is being designed with location privacy in mind.
 
 - Location is used to retrieve local weather
-- Weather location can be stored locally on the device
+- Weather location is stored locally on the device
 - Continuous background location access is not required for the core design
 - No weather API key is required for the current weather provider implementation
 
@@ -71,44 +69,26 @@ Atmosynq is being designed with location privacy in mind.
 - Android
 - Kotlin
 - Android `WallpaperService`
-- OpenGL / custom rendering
+- OpenGL ES / custom rendering
 - Open-Meteo weather data
 - Location-based weather synchronization
 - GitHub Actions automated Android builds
 
-## Project Status
+## Development status
 
-Atmosynq is currently in active development.
+The current source implements the first live-wallpaper/weather synchronization milestone. The full weather dashboard, forecast presentation, wallpaper weather-text modes, semantic scene masks, and store release work are still under active development.
 
-The first development milestone focuses on:
+The Android CI workflow runs unit tests, assembles the debug APK, and uploads the APK as a GitHub Actions artifact.
 
-1. Reliable Android live-wallpaper rendering
-2. Real weather synchronization
-3. Accurate day/night and sunrise/sunset transitions
-4. Dynamic rain, snow, fog, wind, and thunder effects
-5. Weather dashboard and forecasts
-6. Performance and battery optimization
-7. Real-device testing
+## Scene assets
 
-## Future Plans
+The public repository does not bundle copyrighted or third-party wallpaper footage. The renderer has a built-in procedural fallback so the app and CI remain functional without a video asset.
 
-Atmosynq is being designed as more than a single live wallpaper.
+For local/private development, place an original or properly licensed vertical loop at:
 
-Planned expansion includes:
+`app/src/main/res/raw/scene_neutral.mp4`
 
-- Multiple animated environments
-- Scene library
-- User-selectable wallpaper packs
-- Seasonal environments
-- Custom scene support
-- Weather widgets
-- Lock-screen integration where supported
-- Advanced weather overlays
-- Severe-weather visuals
-- Scene customization
-- Performance profiles for different devices
-- Android release
-- iPhone/iPad companion experience where platform capabilities allow
+`tools/derain_source.sh` can prepare a supplied loop before it is copied into that location. The path is ignored by Git so private scene media is not accidentally published.
 
 ## Assets
 
