@@ -6,18 +6,17 @@ import org.junit.Test
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.Base64
 
 class FilamentSceneAssetTest {
     @Test
     fun embeddedAtmosynqGlbHasValidContainer() {
-        val source = File("src/main/assets/filament/atmos_scene.glb.b64")
+        val source = File("src/main/assets/filament/atmos_scene.glb")
             .takeIf { it.exists() }
-            ?: File("app/src/main/assets/filament/atmos_scene.glb.b64")
+            ?: File("app/src/main/assets/filament/atmos_scene.glb")
 
-        assertTrue("Filament scene base64 asset must exist", source.exists())
+        assertTrue("Filament GLB asset must exist", source.exists())
 
-        val bytes = Base64.getDecoder().decode(source.readText().trim())
+        val bytes = source.readBytes()
         assertTrue("GLB must include a 12-byte header", bytes.size >= 20)
 
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
