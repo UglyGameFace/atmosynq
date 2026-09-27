@@ -37,10 +37,10 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Space
 import android.widget.TextView
-import com.uglygameface.atmosynq.location.GeocodingClient
-import com.uglygameface.atmosynq.location.LocationSceneClassifier
+import com.uglygameface.atmosynq.location.GlobalLocationClient
+import com.uglygameface.atmosynq.location.LocationCandidate
+import com.uglygameface.atmosynq.location.LocationSource
 import com.uglygameface.atmosynq.location.LocationStore
-import com.uglygameface.atmosynq.location.PlaceSearchResult
 import com.uglygameface.atmosynq.location.SavedLocation
 import com.uglygameface.atmosynq.location.TerrainContext
 import com.uglygameface.atmosynq.location.TerrainContextClient
@@ -52,6 +52,7 @@ import com.uglygameface.atmosynq.weather.WeatherCode
 import com.uglygameface.atmosynq.weather.WeatherReport
 import com.uglygameface.atmosynq.widget.AtmosynqWidgetProvider
 import com.uglygameface.atmosynq.render.FilamentWeatherHeroView
+import com.uglygameface.atmosynq.render.SceneProfileResolver
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -503,7 +504,7 @@ class MainActivity : Activity() {
             heroScene.setWeather(null)
         } else {
             applySelectedLocation(saved)
-            status.text = "Refreshing ${saved.displayName}…"
+            status.text = "Refreshing ${saved.heroLabel()}…"
             wallpaperButton.isEnabled = true
             wallpaperButton.alpha = 1f
             refreshAtmosynqWeather(saved.latitude, saved.longitude)
@@ -512,9 +513,9 @@ class MainActivity : Activity() {
 
     private fun applySelectedLocation(location: SavedLocation) {
         activeLocation = location
-        heroLocation.text = "●  ${location.displayName}"
+        heroLocation.text = "●  ${location.heroLabel()}"
         heroScene.setSceneProfile(
-            LocationSceneClassifier.from(location)
+            SceneProfileResolver.resolve(location)
         )
     }
 
@@ -671,10 +672,7 @@ class MainActivity : Activity() {
         Thread {
             val result =
                 runCatching {
-                    GeocodingClient().search(
-                        query = query,
-                        count = 12
-                    )
+                    GlobalLocationClient().search(query)
                 }
 
             runOnUiThread {
@@ -687,7 +685,7 @@ class MainActivity : Activity() {
                     if (places.isEmpty()) {
                         status.text = "No matching city or postal code found"
                     } else {
-                        showLocationResults(places)
+                        showLocationResults(query, places)
                     }
                 }.onFailure {
                     status.text = "Location search failed • try again"
@@ -699,29 +697,31 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun showLocationResults(places: List<PlaceSearchResult>) {
+    private fun showLocationResults(
+        query: String,
+        places: List<LocationCandidate>
+    ) {
         val labels =
             places.map { place ->
-                buildString {
-                    append(place.displayLabel())
-                    if (place.postcodes.isNotEmpty()) {
-                        append("  •  ")
-                        append(place.postcodes.take(2).joinToString(" / "))
-                    }
-                }
+                place.displayLabel(query)
             }.toTypedArray()
 
         AlertDialog.Builder(this)
             .setTitle("Select location")
             .setItems(labels) { _, which ->
-                places.getOrNull(which)?.let(::selectSearchedPlace)
+                places.getOrNull(which)?.let { place ->
+                    selectSearchedPlace(query, place)
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun selectSearchedPlace(place: PlaceSearchResult) {
-        status.text = "Building ${place.shortLabel()} scene…"
+    private fun selectSearchedPlace(
+        query: String,
+        place: LocationCandidate
+    ) {
+        status.text = "Building ${place.name} scene…"
         locationButton.isEnabled = false
         locationButton.alpha = 0.6f
 
@@ -733,10 +733,7 @@ class MainActivity : Activity() {
                         longitude = place.longitude
                     )
                 }.getOrElse {
-                    val elevation =
-                        place.elevationM
-                            ?.takeIf { value -> value.isFinite() }
-                            ?: 0.0
+                    val elevation = place.elevationM ?: 0.0
                     TerrainContext(
                         centerElevationM = elevation,
                         minElevationM = elevation,
@@ -745,20 +742,16 @@ class MainActivity : Activity() {
                     )
                 }
 
+            val base = place.toSavedLocation(query)
             val saved =
-                locationStore.save(
-                    latitude = place.latitude,
-                    longitude = place.longitude,
-                    displayName = place.shortLabel(),
-                    source = SavedLocation.SOURCE_SEARCH,
-                    population = place.population,
+                base.copy(
                     elevationM =
-                        place.elevationM
-                            ?.takeIf { value -> value.isFinite() }
+                        base.elevationM
                             ?: terrain.centerElevationM,
-                    reliefM = terrain.reliefM,
-                    countryCode = place.countryCode
+                    reliefM = terrain.reliefM
                 )
+
+            locationStore.save(saved)
 
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
@@ -768,7 +761,7 @@ class MainActivity : Activity() {
                 wallpaperButton.isEnabled = true
                 wallpaperButton.alpha = 1f
                 applySelectedLocation(saved)
-                status.text = "Loading ${saved.displayName} weather…"
+                status.text = "Loading ${saved.heroLabel()} weather…"
                 refreshAtmosynqWeather(
                     saved.latitude,
                     saved.longitude
@@ -907,11 +900,8 @@ class MainActivity : Activity() {
                 reverse.second
                     ?.let { query ->
                         runCatching {
-                            GeocodingClient()
-                                .search(
-                                    query = query,
-                                    count = 8
-                                )
+                            GlobalLocationClient()
+                                .search(query)
                                 .minByOrNull { candidate ->
                                     val dLat =
                                         candidate.latitude -
@@ -933,10 +923,10 @@ class MainActivity : Activity() {
                 }.getOrElse {
                     val elevation =
                         when {
+                            matchedPlace?.elevationM != null ->
+                                matchedPlace.elevationM
                             location.hasAltitude() ->
                                 location.altitude
-                            matchedPlace?.elevationM?.isFinite() == true ->
-                                matchedPlace.elevationM ?: 0.0
                             else ->
                                 0.0
                         }
@@ -952,23 +942,29 @@ class MainActivity : Activity() {
             val displayName =
                 reverse.first
                     .takeIf { it.isNotBlank() }
-                    ?: matchedPlace?.shortLabel()
+                    ?: matchedPlace?.displayLabel()
                     ?: "Approximate location"
 
             val saved =
-                locationStore.save(
+                SavedLocation(
                     latitude = location.latitude,
                     longitude = location.longitude,
+                    savedAtEpochMs = System.currentTimeMillis(),
                     displayName = displayName,
-                    source = SavedLocation.SOURCE_GPS,
-                    population = matchedPlace?.population ?: 0L,
+                    locality = matchedPlace?.name,
+                    admin1 = matchedPlace?.admin1,
+                    countryCode = matchedPlace?.countryCode,
+                    country = matchedPlace?.country,
                     elevationM =
                         matchedPlace?.elevationM
-                            ?.takeIf { it.isFinite() }
                             ?: terrain.centerElevationM,
                     reliefM = terrain.reliefM,
-                    countryCode = matchedPlace?.countryCode
+                    population = matchedPlace?.population,
+                    featureCode = matchedPlace?.featureCode,
+                    source = LocationSource.DEVICE
                 )
+
+            locationStore.save(saved)
 
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
@@ -978,7 +974,7 @@ class MainActivity : Activity() {
                 wallpaperButton.isEnabled = true
                 wallpaperButton.alpha = 1f
                 applySelectedLocation(saved)
-                status.text = "Loading ${saved.displayName} weather…"
+                status.text = "Loading ${saved.heroLabel()} weather…"
                 refreshAtmosynqWeather(
                     saved.latitude,
                     saved.longitude
@@ -1091,10 +1087,10 @@ class MainActivity : Activity() {
         val selectedLocation =
             activeLocation ?: locationStore.load()
         heroLocation.text =
-            "●  ${selectedLocation?.displayName ?: "Selected location"}"
+            "●  ${selectedLocation?.heroLabel() ?: "Selected location"}"
         selectedLocation?.let {
             heroScene.setSceneProfile(
-                LocationSceneClassifier.from(it)
+                SceneProfileResolver.resolve(it)
             )
         }
         metricFeels.text = formatTemperature(current.apparentTemperatureC)
