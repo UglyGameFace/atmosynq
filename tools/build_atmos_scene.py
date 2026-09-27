@@ -229,18 +229,18 @@ def build_scene(output: Path):
         ),
         "glass": PBRMaterial(
             name="Glass",
-            baseColorFactor=[72, 126, 160, 150],
-            roughnessFactor=0.08,
-            metallicFactor=0.15,
-            alphaMode="BLEND",
+            baseColorFactor=[42, 62, 78, 255],
+            roughnessFactor=0.16,
+            metallicFactor=0.32,
+            alphaMode="OPAQUE",
             doubleSided=True,
         ),
         "window": PBRMaterial(
             name="WindowGlow",
-            baseColorFactor=[48, 77, 105, 255],
-            roughnessFactor=0.18,
-            metallicFactor=0.10,
-            emissiveFactor=[1.0, 0.78, 0.35],
+            baseColorFactor=[36, 50, 64, 255],
+            roughnessFactor=0.20,
+            metallicFactor=0.12,
+            emissiveFactor=[0.12, 0.085, 0.035],
         ),
         "neon_cyan": PBRMaterial(
             name="NeonCyan",
@@ -258,10 +258,10 @@ def build_scene(output: Path):
         ),
         "water": PBRMaterial(
             name="Water",
-            baseColorFactor=[30, 100, 136, 185],
-            roughnessFactor=0.08,
-            metallicFactor=0.25,
-            alphaMode="BLEND",
+            baseColorFactor=[22, 61, 82, 255],
+            roughnessFactor=0.16,
+            metallicFactor=0.30,
+            alphaMode="OPAQUE",
             baseColorTexture=water,
             normalTexture=water_normal,
             doubleSided=True,
@@ -295,25 +295,55 @@ def build_scene(output: Path):
         ),
         "cloud": PBRMaterial(
             name="Cloud",
-            baseColorFactor=[210, 220, 230, 210],
-            roughnessFactor=0.92,
+            baseColorFactor=[132, 143, 156, 255],
+            roughnessFactor=0.98,
             metallicFactor=0.0,
-            alphaMode="BLEND",
+            alphaMode="OPAQUE",
             baseColorTexture=cloud,
             doubleSided=True,
         ),
         "sun": PBRMaterial(
             name="Sun",
-            baseColorFactor=[255, 220, 130, 255],
-            roughnessFactor=0.10,
+            baseColorFactor=[240, 211, 148, 255],
+            roughnessFactor=0.18,
             metallicFactor=0.0,
-            emissiveFactor=[1.0, 0.72, 0.22],
+            emissiveFactor=[0.34, 0.24, 0.07],
         ),
         "metal": PBRMaterial(
             name="Metal",
-            baseColorFactor=[92, 104, 118, 255],
-            roughnessFactor=0.25,
-            metallicFactor=0.85,
+            baseColorFactor=[72, 82, 94, 255],
+            roughnessFactor=0.32,
+            metallicFactor=0.78,
+        ),
+        "siding": PBRMaterial(
+            name="HouseSiding",
+            baseColorFactor=[150, 151, 145, 255],
+            roughnessFactor=0.82,
+            metallicFactor=0.0,
+            baseColorTexture=concrete,
+            normalTexture=concrete_normal,
+        ),
+        "brick": PBRMaterial(
+            name="Brick",
+            baseColorFactor=[112, 72, 58, 255],
+            roughnessFactor=0.90,
+            metallicFactor=0.0,
+            baseColorTexture=concrete,
+            normalTexture=concrete_normal,
+        ),
+        "stucco": PBRMaterial(
+            name="Stucco",
+            baseColorFactor=[174, 164, 147, 255],
+            roughnessFactor=0.88,
+            metallicFactor=0.0,
+            baseColorTexture=concrete,
+            normalTexture=concrete_normal,
+        ),
+        "garage": PBRMaterial(
+            name="GarageDoor",
+            baseColorFactor=[93, 101, 108, 255],
+            roughnessFactor=0.66,
+            metallicFactor=0.05,
         ),
     }
 
@@ -481,25 +511,36 @@ def build_scene(output: Path):
             building_index += 1
 
     def add_house(index, x, z, scale=1.0, rotation=0.0):
-        width = 1.55 * scale
-        depth = 1.3 * scale
-        height = 0.82 * scale
+        variant = index % 4
+        width = (1.45 + variant * 0.12) * scale
+        depth = (1.15 + (index % 3) * 0.14) * scale
+        stories = 2 if index % 5 in (1, 4) else 1
+        height = (0.76 + (stories - 1) * 0.48) * scale
         transform = trimesh.transformations.rotation_matrix(
             rotation,
             [0, 1, 0],
         )
         transform[:3, 3] = [x, 0, z]
 
+        facade_material = [
+            materials["siding"],
+            materials["brick"],
+            materials["stucco"],
+            materials["siding"],
+        ][variant]
+
         add(
             box((width, height, depth), center=(0, height / 2, 0)),
             f"House{index}",
-            materials["concrete"],
+            facade_material,
             transform,
         )
+
+        roof_height = (0.34 + (index % 3) * 0.08) * scale
         roof_geometry = roof_mesh(
-            width * 1.08,
-            depth * 1.10,
-            0.50 * scale,
+            width * 1.10,
+            depth * 1.13,
+            roof_height,
         )
         roof_geometry.apply_translation((0, height, 0))
         add(
@@ -509,24 +550,88 @@ def build_scene(output: Path):
             transform,
         )
 
+        # Attached garage / porch mass breaks the copy-pasted-box silhouette.
+        garage_width = width * (0.34 if index % 2 == 0 else 0.26)
+        garage_height = height * 0.46
+        garage_x = width * (0.24 if index % 2 == 0 else -0.25)
+        garage = box(
+            (garage_width, garage_height, 0.11 * scale),
+            center=(
+                garage_x,
+                garage_height / 2,
+                depth / 2 + 0.06 * scale,
+            ),
+        )
+        add(
+            garage,
+            f"HouseGarage{index}",
+            materials["garage"],
+            transform,
+        )
+
+        door = box(
+            (0.20 * scale, 0.42 * scale, 0.035 * scale),
+            center=(
+                -width * 0.18,
+                0.21 * scale,
+                depth / 2 + 0.035 * scale,
+            ),
+        )
+        add(
+            door,
+            f"HouseDoor{index}",
+            materials["roof"],
+            transform,
+        )
+
         windows = []
-        for side in (-0.28, 0.28):
-            windows.append(
-                box(
-                    (0.25 * scale, 0.25 * scale, 0.025),
-                    center=(
-                        side * width,
-                        0.48 * height,
-                        depth / 2 + 0.02,
-                    ),
-                )
+        rows = stories
+        for row in range(rows):
+            window_y = (
+                0.42 * scale +
+                row * 0.47 * scale
             )
+            for side in (-0.26, 0.26):
+                windows.append(
+                    box(
+                        (
+                            0.20 * scale,
+                            0.20 * scale,
+                            0.022 * scale,
+                        ),
+                        center=(
+                            side * width,
+                            window_y,
+                            depth / 2 + 0.025 * scale,
+                        ),
+                    )
+                )
         add(
             trimesh.util.concatenate(windows),
             f"HouseWindows{index}",
-            materials["window"],
+            materials["glass"],
             transform,
         )
+
+        if index % 3 == 0:
+            chimney = box(
+                (
+                    0.15 * scale,
+                    0.48 * scale,
+                    0.17 * scale,
+                ),
+                center=(
+                    width * 0.24,
+                    height + roof_height * 0.72,
+                    0,
+                ),
+            )
+            add(
+                chimney,
+                f"HouseChimney{index}",
+                materials["brick"],
+                transform,
+            )
 
     for i in range(14):
         row = i // 7
@@ -653,24 +758,24 @@ def build_scene(output: Path):
         add(light, f"StreetLight{i}", materials["window"])
 
     cloud_centers = [
-        (-4.6, 6.4, -5.4),
-        (0.0, 7.1, -7.0),
-        (4.8, 6.2, -5.8),
-        (-1.8, 5.3, -3.6),
-        (3.1, 5.0, -3.2),
+        (-5.8, 6.6, -12.5),
+        (-1.8, 7.4, -15.0),
+        (4.4, 6.9, -13.8),
+        (-3.2, 5.8, -10.8),
+        (3.1, 5.6, -10.4),
     ]
     for i, (cx, cy, cz) in enumerate(cloud_centers):
         blobs = []
-        for j in range(10):
-            angle = j * math.tau / 10
-            radius = 0.65 + 0.20 * ((j * 7 + i * 3) % 4)
+        for j in range(12):
+            angle = j * math.tau / 12
+            radius = 0.34 + 0.10 * ((j * 7 + i * 3) % 4)
             blob = sphere(radius, subdivisions=2)
-            blob.apply_scale([1.45, 0.65, 1.0])
+            blob.apply_scale([1.80, 0.34, 1.22])
             blob.apply_translation(
                 (
-                    cx + math.cos(angle) * 1.25,
-                    cy + math.sin(angle * 1.7) * 0.30,
-                    cz + math.sin(angle) * 0.5,
+                    cx + math.cos(angle) * 1.10,
+                    cy + math.sin(angle * 1.9) * 0.14,
+                    cz + math.sin(angle) * 0.38,
                 )
             )
             blobs.append(blob)
