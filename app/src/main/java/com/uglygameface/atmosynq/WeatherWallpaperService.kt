@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.PersistableBundle
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
+import com.uglygameface.atmosynq.preferences.MotionPreferenceStore
 import com.uglygameface.atmosynq.render.WeatherRendererThread
 import com.uglygameface.atmosynq.wallpaper.WallpaperSurfaceProfile
 import com.uglygameface.atmosynq.wallpaper.WallpaperSurfaceResolver
@@ -26,6 +27,7 @@ class WeatherWallpaperService : WallpaperService() {
         initialSurfaceProfile: WallpaperSurfaceProfile
     ) : Engine() {
         private val weatherController = WeatherController(applicationContext)
+        private val motionStore = MotionPreferenceStore(applicationContext)
         private var renderer: WeatherRendererThread? = null
         private var currentlyVisible = false
         private var surfaceProfile = initialSurfaceProfile
@@ -37,6 +39,7 @@ class WeatherWallpaperService : WallpaperService() {
                 context = applicationContext,
                 holder = holder,
                 visualProvider = weatherController::currentVisual,
+                motionProvider = motionStore::isAnimated,
                 initialSurfaceProfile = surfaceProfile
             ).also {
                 val frame = holder.surfaceFrame

@@ -1,6 +1,9 @@
 package com.uglygameface.atmosynq
 
 import android.Manifest
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
@@ -21,14 +24,17 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
 import android.widget.HorizontalScrollView
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Space
 import android.widget.TextView
 import com.uglygameface.atmosynq.location.LocationStore
+import com.uglygameface.atmosynq.preferences.MotionPreferenceStore
 import com.uglygameface.atmosynq.weather.DailyForecast
 import com.uglygameface.atmosynq.weather.HourlyForecast
 import com.uglygameface.atmosynq.weather.OpenMeteoClient
@@ -56,8 +62,12 @@ class MainActivity : Activity() {
     private lateinit var dailyContainer: LinearLayout
     private lateinit var locationButton: Button
     private lateinit var wallpaperButton: Button
+    private lateinit var motionButton: Button
+    private lateinit var brandMark: ImageView
+    private var brandAnimator: AnimatorSet? = null
 
     private val locationStore by lazy { LocationStore(this) }
+    private val motionStore by lazy { MotionPreferenceStore(this) }
     private val callbackUsed = AtomicBoolean(false)
     private val usesUsUnits: Boolean
         get() = Locale.getDefault().country.equals("US", ignoreCase = true)
@@ -66,6 +76,18 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(buildUi())
         renderSavedState()
+        applyMotionMode()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::brandMark.isInitialized) applyMotionMode()
+    }
+
+    override fun onPause() {
+        brandAnimator?.cancel()
+        brandAnimator = null
+        super.onPause()
     }
 
     private fun buildUi(): ScrollView {
@@ -83,21 +105,55 @@ class MainActivity : Activity() {
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         )
 
-        content.addView(TextView(this).apply {
-            text = "Atmosynq"
-            textSize = 30f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-        }, matchWrap())
+        brandMark = ImageView(this).apply {
+            setImageResource(R.drawable.atmosynq_mark)
+            contentDescription = "Atmosynq"
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
+        }
+        content.addView(
+            brandMark,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(120)).apply {
+                bottomMargin = dp(4)
+            }
+        )
+
+        content.addView(ImageView(this).apply {
+            setImageResource(R.drawable.atmosynq_wordmark)
+            contentDescription = "Atmosynq"
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(68)))
 
         content.addView(TextView(this).apply {
             text = "Weather that comes alive."
             textSize = 15f
             setTextColor(COLOR_MUTED)
             gravity = Gravity.CENTER
-            setPadding(0, dp(4), 0, dp(18))
+            setPadding(0, dp(2), 0, dp(12))
         }, matchWrap())
+
+        motionButton = Button(this).apply {
+            setOnClickListener {
+                motionStore.setAnimated(!motionStore.isAnimated())
+                applyMotionMode()
+                sendBroadcast(
+                    Intent(this@MainActivity, AtmosynqWidgetProvider::class.java)
+                        .setAction(AtmosynqWidgetProvider.ACTION_REFRESH)
+                )
+                status.text = if (motionStore.isAnimated()) {
+                    "Animated visuals enabled"
+                } else {
+                    "Static visuals enabled"
+                }
+            }
+        }
+        content.addView(
+            motionButton,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)).apply {
+                bottomMargin = dp(8)
+            }
+        )
 
         status = TextView(this).apply {
             textSize = 13f
@@ -571,6 +627,43 @@ class MainActivity : Activity() {
         LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
+
+    private fun applyMotionMode() {
+        if (!::motionButton.isInitialized || !::brandMark.isInitialized) return
+
+        val animated = motionStore.isAnimated()
+        motionButton.text = if (animated) {
+            "Visual mode: Animated"
+        } else {
+            "Visual mode: Static"
+        }
+
+        brandAnimator?.cancel()
+        brandAnimator = null
+        brandMark.scaleX = 1f
+        brandMark.scaleY = 1f
+        brandMark.translationY = 0f
+        brandMark.alpha = 1f
+
+        if (!animated) return
+
+        val scaleX = ObjectAnimator.ofFloat(brandMark, View.SCALE_X, 1f, 1.035f, 1f)
+        val scaleY = ObjectAnimator.ofFloat(brandMark, View.SCALE_Y, 1f, 1.035f, 1f)
+        val lift = ObjectAnimator.ofFloat(brandMark, View.TRANSLATION_Y, 0f, -dp(3).toFloat(), 0f)
+        val glow = ObjectAnimator.ofFloat(brandMark, View.ALPHA, 0.92f, 1f, 0.92f)
+
+        listOf(scaleX, scaleY, lift, glow).forEach { animator ->
+            animator.repeatCount = ValueAnimator.INFINITE
+            animator.repeatMode = ValueAnimator.RESTART
+        }
+
+        brandAnimator = AnimatorSet().apply {
+            playTogether(scaleX, scaleY, lift, glow)
+            duration = 3200L
+            interpolator = AccelerateDecelerateInterpolator()
+            start()
+        }
+    }
 
     private fun requestPinWidget() {
         val manager = AppWidgetManager.getInstance(this)

@@ -15,26 +15,26 @@ import kotlin.random.Random
 object WeatherWidgetSceneRenderer {
     private const val WIDTH = 720
     private const val HEIGHT = 420
-    private const val OUTPUT_WIDTH = 480
-    private const val OUTPUT_HEIGHT = 280
+    private const val OUTPUT_WIDTH = 320
+    private const val OUTPUT_HEIGHT = 187
 
-    fun render(snapshot: WeatherSnapshot): Bitmap {
+    fun render(snapshot: WeatherSnapshot, frameIndex: Int = 0): Bitmap {
         val bitmap = Bitmap.createBitmap(OUTPUT_WIDTH, OUTPUT_HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.scale(OUTPUT_WIDTH / WIDTH.toFloat(), OUTPUT_HEIGHT / HEIGHT.toFloat())
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         drawSky(canvas, paint, snapshot)
-        drawSunOrMoon(canvas, paint, snapshot)
-        drawClouds(canvas, paint, snapshot)
+        drawSunOrMoon(canvas, paint, snapshot, frameIndex)
+        drawClouds(canvas, paint, snapshot, frameIndex)
 
         when {
-            isSnow(snapshot.weatherCode) || snapshot.snowfallCm > 0.0 -> drawSnow(canvas, paint, snapshot)
-            isRain(snapshot.weatherCode) || snapshot.rainMm + snapshot.showersMm > 0.0 -> drawRain(canvas, paint, snapshot)
+            isSnow(snapshot.weatherCode) || snapshot.snowfallCm > 0.0 -> drawSnow(canvas, paint, snapshot, frameIndex)
+            isRain(snapshot.weatherCode) || snapshot.rainMm + snapshot.showersMm > 0.0 -> drawRain(canvas, paint, snapshot, frameIndex)
         }
 
-        if (isFog(snapshot.weatherCode) || snapshot.visibilityM < 8_000.0) drawFog(canvas, paint, snapshot)
-        if (isThunder(snapshot.weatherCode)) drawLightning(canvas, paint)
+        if (isFog(snapshot.weatherCode) || snapshot.visibilityM < 8_000.0) drawFog(canvas, paint, snapshot, frameIndex)
+        if (isThunder(snapshot.weatherCode) && frameIndex % 3 == 1) drawLightning(canvas, paint)
 
         drawVignette(canvas, paint)
         return bitmap
@@ -57,22 +57,28 @@ object WeatherWidgetSceneRenderer {
         paint.shader = null
     }
 
-    private fun drawSunOrMoon(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot) {
+    private fun drawSunOrMoon(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
         if (snapshot.cloudCoverPct >= 88.0) return
-        val alpha = (220 - snapshot.cloudCoverPct * 1.7).toInt().coerceIn(40, 220)
+        val pulse = when (frameIndex % 3) {
+            1 -> 1.08f
+            2 -> 0.96f
+            else -> 1f
+        }
+        val alpha = ((220 - snapshot.cloudCoverPct * 1.7) * pulse).toInt().coerceIn(40, 235)
         paint.color = if (snapshot.isDay) {
             Color.argb(alpha, 255, 232, 151)
         } else {
             Color.argb(alpha, 225, 235, 255)
         }
-        canvas.drawCircle(590f, 92f, if (snapshot.isDay) 42f else 31f, paint)
+        val baseRadius = if (snapshot.isDay) 42f else 31f
+        canvas.drawCircle(590f, 92f, baseRadius * pulse, paint)
     }
 
-    private fun drawClouds(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot) {
+    private fun drawClouds(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
         val coverage = (snapshot.cloudCoverPct / 100.0).coerceIn(0.0, 1.0)
         if (coverage < 0.08) return
 
-        val seed = (snapshot.fetchedAtEpochMs / 3_600_000L).toInt() xor snapshot.weatherCode
+        val seed = ((snapshot.fetchedAtEpochMs / 3_600_000L).toInt() xor snapshot.weatherCode) + frameIndex * 131
         val rng = Random(seed)
         val count = (2 + coverage * 8).toInt().coerceIn(2, 10)
         val darkness = if (isThunder(snapshot.weatherCode)) 78 else (128 + (1.0 - coverage) * 70).toInt()
@@ -96,10 +102,10 @@ object WeatherWidgetSceneRenderer {
         canvas.drawCircle(x + 51f * scale, y + 2f * scale, 36f * scale, paint)
     }
 
-    private fun drawRain(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot) {
+    private fun drawRain(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
         val intensity = rainIntensity(snapshot)
         val count = (60 + intensity * 150).toInt()
-        val seed = snapshot.weatherCode * 97 + (snapshot.fetchedAtEpochMs / 3_600_000L).toInt()
+        val seed = snapshot.weatherCode * 97 + (snapshot.fetchedAtEpochMs / 3_600_000L).toInt() + frameIndex * 811
         val rng = Random(seed)
         val wind = ((snapshot.windDirectionDeg % 360.0) / 360.0 - 0.5).toFloat() * 26f
 
@@ -115,10 +121,10 @@ object WeatherWidgetSceneRenderer {
         }
     }
 
-    private fun drawSnow(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot) {
+    private fun drawSnow(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
         val intensity = snowIntensity(snapshot)
         val count = (45 + intensity * 115).toInt()
-        val seed = snapshot.weatherCode * 113 + (snapshot.fetchedAtEpochMs / 3_600_000L).toInt()
+        val seed = snapshot.weatherCode * 113 + (snapshot.fetchedAtEpochMs / 3_600_000L).toInt() + frameIndex * 977
         val rng = Random(seed)
         paint.color = Color.argb((170 + intensity * 80).toInt(), 245, 250, 255)
 
@@ -130,16 +136,17 @@ object WeatherWidgetSceneRenderer {
         }
     }
 
-    private fun drawFog(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot) {
+    private fun drawFog(canvas: Canvas, paint: Paint, snapshot: WeatherSnapshot, frameIndex: Int) {
         val visibilityFactor = when {
             snapshot.visibilityM <= 500 -> 1f
             snapshot.visibilityM >= 10_000 -> 0.2f
             else -> (1.0 - (snapshot.visibilityM - 500.0) / 9_500.0).toFloat()
         }
         paint.color = Color.argb((48 + visibilityFactor * 90).toInt(), 225, 232, 235)
+        val drift = (frameIndex % 3 - 1) * 24f
         repeat(5) { index ->
             val y = 180f + index * 50f
-            canvas.drawRoundRect(-40f + index * 20f, y, WIDTH + 40f, y + 34f, 40f, 40f, paint)
+            canvas.drawRoundRect(-40f + index * 20f + drift, y, WIDTH + 40f + drift, y + 34f, 40f, 40f, paint)
         }
     }
 

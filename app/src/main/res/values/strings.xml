@@ -7,4 +7,5 @@
     <string name="widget_scene_description">Weather-reactive Atmosynq scene</string>
     <string name="widget_loading">Loading local weather</string>
     <string name="widget_refresh">Refresh weather</string>
+    <string name="widget_brand_description">Atmosynq brand mark</string>
 </resources>

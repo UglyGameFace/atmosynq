@@ -25,6 +25,7 @@ internal class WeatherRendererThread(
     private val context: Context,
     private val holder: SurfaceHolder,
     private val visualProvider: () -> WeatherVisualState,
+    private val motionProvider: () -> Boolean = { true },
     initialSurfaceProfile: WallpaperSurfaceProfile = WallpaperSurfaceProfile.AUTO
 ) : Thread("AtmosynqGL") {
 
@@ -135,16 +136,23 @@ internal class WeatherRendererThread(
             particleSystem = ParticleSystem()
             lastFrameNanos = System.nanoTime()
             var lastVisible = false
+            var lastMotionEnabled = true
 
             while (running.get()) {
                 val nowNanos = System.nanoTime()
                 val dt = min(0.05f, ((nowNanos - lastFrameNanos) / 1_000_000_000.0).toFloat().coerceAtLeast(0.001f))
                 lastFrameNanos = nowNanos
                 val isVisible = visible.get()
+                val motionEnabled = motionProvider()
 
-                if (isVisible != lastVisible) {
-                    if (isVisible) runCatching { mediaPlayer?.start() } else runCatching { mediaPlayer?.pause() }
+                if (isVisible != lastVisible || motionEnabled != lastMotionEnabled) {
+                    if (isVisible && motionEnabled) {
+                        runCatching { mediaPlayer?.start() }
+                    } else {
+                        runCatching { mediaPlayer?.pause() }
+                    }
                     lastVisible = isVisible
+                    lastMotionEnabled = motionEnabled
                 }
                 if (!isVisible) {
                     sleepQuietly(120)
@@ -161,12 +169,18 @@ internal class WeatherRendererThread(
                     targetVisual = visualProvider()
                     lastTargetRefreshMs = nowMs
                 }
-                currentVisual = approach(currentVisual, targetVisual, min(1f, dt * 0.10f))
-                updateLightning(dt, currentVisual.thunderIntensity)
-                drawFrame(currentVisual, dt)
+                if (motionEnabled) {
+                    currentVisual = approach(currentVisual, targetVisual, min(1f, dt * 0.10f))
+                    updateLightning(dt, currentVisual.thunderIntensity)
+                    drawFrame(currentVisual, dt)
+                } else {
+                    currentVisual = targetVisual
+                    lightningRemaining = 0f
+                    drawFrame(currentVisual, 0f)
+                }
                 EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, nowNanos)
                 if (!EGL14.eglSwapBuffers(eglDisplay, eglSurface)) break
-                sleepQuietly(surfaceProfile.get().frameDelayMs)
+                sleepQuietly(if (motionEnabled) surfaceProfile.get().frameDelayMs else STATIC_FRAME_DELAY_MS)
             }
         } finally {
             releaseGl()
@@ -349,4 +363,7 @@ internal class WeatherRendererThread(
         return (a + delta * t + 360f) % 360f
     }
 
+    companion object {
+        private const val STATIC_FRAME_DELAY_MS = 1000L
+    }
 }

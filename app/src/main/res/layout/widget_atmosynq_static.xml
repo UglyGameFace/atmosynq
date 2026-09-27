@@ -13,8 +13,8 @@
         android:id="@+id/widget_scene_flipper"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:autoStart="true"
-        android:flipInterval="1350"
+        android:autoStart="false"
+        android:flipInterval="60000"
         android:inAnimation="@anim/widget_fade_in"
         android:outAnimation="@anim/widget_fade_out">
 
