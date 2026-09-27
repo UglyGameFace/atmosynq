@@ -406,16 +406,19 @@ class MainActivity : Activity() {
         hourlySection = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
+            setPadding(dp(12), dp(10), dp(12), dp(12))
+            background = roundedBackground(COLOR_SECTION_BG, 22, COLOR_STROKE)
         }
-        hourlySection.addView(sectionTitle("Next 12 hours"), matchWrap())
+        hourlySection.addView(sectionTitle("Next 12 Hours"), matchWrap())
 
         hourlyContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(2), dp(4), dp(4))
+            setPadding(0, dp(2), dp(4), dp(2))
         }
         hourlySection.addView(
             HorizontalScrollView(this).apply {
                 isHorizontalScrollBarEnabled = false
+                overScrollMode = View.OVER_SCROLL_NEVER
                 addView(
                     hourlyContainer,
                     FrameLayout.LayoutParams(
@@ -428,20 +431,25 @@ class MainActivity : Activity() {
         )
         content.addView(
             hourlySection,
-            matchWrap().apply { bottomMargin = dp(6) }
+            matchWrap().apply { bottomMargin = dp(12) }
         )
 
         dailySection = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedBackground(COLOR_SECTION_BG, 22, COLOR_STROKE)
         }
-        dailySection.addView(sectionTitle("7-day forecast"), matchWrap())
+        dailySection.addView(sectionTitle("7-Day Forecast"), matchWrap())
 
         dailyContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
         dailySection.addView(dailyContainer, matchWrap())
-        content.addView(dailySection, matchWrap())
+        content.addView(
+            dailySection,
+            matchWrap().apply { bottomMargin = dp(4) }
+        )
 
         content.addView(Space(this), LinearLayout.LayoutParams(1, dp(12)))
 
