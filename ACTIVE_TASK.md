@@ -1,161 +1,142 @@
 # Active Task
 
 ## Active task / outcome
-Migrate Atmosynq's dashboard weather hero from the procedural Android Canvas renderer to Google Filament and push mobile real-time rendering quality aggressively without breaking the working weather app.
+Turn Atmosynq's working Filament dashboard hero into a genuinely interactive, weather-reactive visual experience on Android, while preserving the production weather/location/widget/wallpaper paths.
 
-## Baseline
-- production/main before this branch: `8dd937bf844693a481e7ab17eda65d55cd802649`
-- production version: 0.3.1 / versionCode 7
-- v0.3.1 fixed the real logo and improved Canvas motion, but the real-device result still looked visibly procedural / primitive
+## Scope lock
+This is a continuation of the dashboard-renderer task. Do not switch to iOS, Xiaomi rear-display support, widget redesign, wallpaper-engine migration, API/provider work, or unrelated cleanup until this task passes its validation gate.
+
+## Production baseline
+- main SHA at branch start: `c713b52f62850ffa65441ba09f4377097115c797`
+- merged PR #11: `v0.4.0 migrate Atmosynq dashboard hero to Filament`
+- PR #11 exact-head CI run #65: passed
+- production version before this branch: 0.4.0 / versionCode 8
 
 ## Current branch
-`feat/v0.4.0-filament-max`
+`feat/v0.4.1-interactive-weather-portal`
 
-## Version
-- versionCode: 8
-- versionName: 0.4.0
+## Target version
+- versionCode: 9
+- versionName: 0.4.1
 
-## Renderer migration implemented
-### Filament runtime
-Pinned from Maven Central:
-- `com.google.android.filament:filament-android:1.77.0`
-- `com.google.android.filament:gltfio-android:1.77.0`
-- `com.google.android.filament:filament-utils-android:1.77.0`
+## Real-device finding / root cause
+The v0.4.0 Filament path is technically functioning on the Samsung test device, but the visual gate failed.
 
-### New dashboard renderer
-`FilamentWeatherHeroView` now owns the intended dashboard hero.
+The screenshots prove:
+- the Filament/TextureView path renders rather than presenting a blank surface
+- weather data and dashboard overlays still render
+- the scene itself looks primitive and low-detail
+- the shipped `app/src/main/assets/filament/atmos_scene.glb` is only a tiny prototype environment, so HDR/AO/bloom/SSR cannot manufacture missing art detail
+- the hero was passive: no direct drag, pinch, tap, camera, or weather-FX interaction
+- the dashboard composition hid too much of the scene behind dark scrims and oversized chrome
 
-It uses:
-- Filament `ModelViewer`
-- Android `TextureView` so existing text / metric overlays compose normally
-- a real glTF / GLB PBR scene
-- weather-driven sun and environment lighting
-- Choreographer-based animation
-- named scene-node animation for clouds, Atmosynq cyan/purple ribbons and sun
-- existing `WeatherHeroView` underneath as a fail-safe fallback
+The problem is therefore not another post-processing toggle. The renderer foundation works; the presentation and interaction layer were underbuilt.
 
-If Filament initialization, model loading, or rendering fails, the app must show the existing Canvas hero instead of a black/blank card.
+## Execution path
+`MainActivity`
+→ creates `FilamentWeatherHeroView`
+→ Filament `ModelViewer` renders `assets/filament/atmos_scene.glb` on a `TextureView`
+→ live `WeatherSnapshot` drives lighting / scene motion
+→ `WeatherFxOverlayView` adds high-frequency weather atmosphere above the 3D scene
+→ touch gestures update the Filament camera and overlay parallax
+→ existing `WeatherHeroView` remains underneath as the graphics failure fallback
 
-## First PBR scene
-Embedded scene includes:
-- PBR water surface
-- foreground terrain
-- three 3D mountain forms
-- three translucent cloud objects
-- emissive sun
-- emissive cyan Atmosynq atmosphere ribbon
-- emissive purple Atmosynq atmosphere ribbon
+## Changes on this branch
 
-Weather drives:
-- sky color
-- indirect-light intensity
-- direct sun intensity
-- sun color
-- cloud animation speed from current wind
-- storm light reduction
-- day / night lighting balance
+### Interactive 3D portal
+`FilamentWeatherHeroView` now supports:
+- horizontal drag to look around the scene
+- bounded vertical camera tilt
+- pinch-to-zoom
+- tap atmosphere ripple
+- subtle animated camera drift when Animated mode is enabled
+- parallax coupling between camera movement and atmospheric FX
+- gesture arbitration that does not intentionally disable the dashboard's vertical ScrollView until a horizontal drag or pinch is confirmed
 
-## Quality stack
-The first Filament configuration enables:
-- HDR color buffer: HIGH
-- dynamic resolution: HIGH
-- dynamic-resolution range: 58% to 100%
-- dynamic-resolution sharpness: 0.92
-- 4x MSAA
-- FXAA
-- ambient occlusion
-- bloom
-- screen-space reflections
-- screen-space refraction
-- post-processing
-- direct SUN light with shadows
-- spherical-harmonic indirect light
+### Live atmospheric FX
+New `WeatherFxOverlayView` renders above Filament:
+- cyan/purple atmospheric ribbons
+- night stars
+- wind streaks
+- rain driven by rain/showers/precipitation and weather code
+- snow driven by snowfall/weather code
+- fog driven by fog code and visibility
+- thunder flashes / lightning
+- touch pulse rings
+- cinematic vignette
+- Animated / Static support
 
-This is deliberately aggressive. Dynamic resolution is the safety valve before removing visual features.
+The FX layer uses the existing `WeatherSnapshot`; no duplicate weather provider or second state pipeline was introduced.
 
-## Asset integrity
-The embedded Filament scene is stored as:
-`app/src/main/assets/filament/atmos_scene.glb.b64`
+### Dashboard composition
+The dashboard now:
+- gives the weather scene substantially more vertical space
+- shrinks the oversized brand mark
+- uses a compact sync pill
+- lightens the full-card scrim so the graphics remain visible
+- makes the bottom metric glass more transparent
+- adds an explicit `LIVE 3D • DRAG • PINCH • TAP` affordance
+- increases primary temperature presence without removing current metrics
 
-A JVM regression test validates:
-- glTF magic
-- GLB version 2
-- declared file length
-- chunk boundaries
-- JSON chunk
-- BIN chunk
-
-This exists because Android resource packaging succeeding does not prove a shipped binary scene is valid.
-
-## Preserved features
-Do not regress:
-- current Open-Meteo weather
-- foreground location capture
-- Animated / Static mode
+## Preserved behavior
+Must remain intact:
+- Open-Meteo weather retrieval
+- foreground location capture and private location persistence
+- Animated / Static preference
 - hourly forecast
 - 7-day forecast
-- widget pinning
-- current Android widget behavior
-- wallpaper picker
-- existing live wallpaper
-- approved integrated Atmosynq logo
+- widget pinning and current widget behavior
+- live-wallpaper picker
+- existing live wallpaper renderer
+- approved Atmosynq logo
+- Filament failure fallback to `WeatherHeroView`
 
-## Not migrated yet
-The Android live wallpaper still uses the existing EGL/GLES renderer in this PR.
+## Current status
+Implementation is in progress on the feature branch. No completion claim until exact-head CI passes and the resulting APK is checked on the real Samsung device.
 
-Reason:
-1. validate Filament on the dashboard and real Samsung hardware first
-2. then extract/share the scene controller
-3. migrate the WallpaperService through Filament's SurfaceHolder path
-
-Do not delete the existing wallpaper renderer until the Filament wallpaper path passes real-device validation.
-
-## Validation gate
-PR #11 — `v0.4.0: migrate dashboard weather hero to Filament` — is open to `main`.
-
-Exact-head CI must pass:
+## Validation required
+Exact branch head must pass:
 - dependency resolution
+- all JVM/unit tests
 - GLB integrity regression test
-- all existing unit tests
-- Android resource linking
 - Kotlin compilation
+- Android resource linking
 - debug APK assembly
 - APK artifact upload
 
-Do not merge until exact-head CI is green.
+Real-device gate after CI:
+1. Filament scene renders, not the Canvas fallback
+2. no black/white/transparent TextureView
+3. drag rotates the view without breaking vertical page scrolling
+4. pinch zoom is bounded and stable
+5. tap produces visible atmosphere feedback
+6. rain/snow/fog/thunder effects match current weather conditions
+7. Animated mode moves continuously; Static mode stays still except direct user interaction
+8. text/metrics remain readable but no longer bury the graphics
+9. background/resume does not crash or leak renderer state
+10. location, forecasts, widget and wallpaper picker remain working
+11. animation remains smooth enough on the Samsung test device
+12. heat/battery behavior is acceptable for dashboard use
 
-## Real-device validation after build
-1. dashboard hero actually renders Filament rather than fallback Canvas
-2. no black / transparent / white TextureView
-3. text and metrics remain above the Filament surface
-4. PBR water has visible specular lighting
-5. terrain has real light / shadow response
-6. clouds have real 3D depth
-7. cyan / purple emissive elements bloom
-8. AO adds visible contact depth
-9. SSR does not create catastrophic artifacts
-10. dynamic resolution keeps animation smooth
-11. Animated mode moves scene nodes smoothly
-12. Static mode renders a stable frame
-13. weather refresh changes lighting without recreating the app
-14. no crash when backgrounding / returning
-15. fallback Canvas activates cleanly on Filament failure
-16. location, forecasts, widget and wallpaper picker remain intact
-17. heat and battery are measured before increasing quality further
+## Cleanup / conflict inspection
+Before merge:
+- inspect the affected render package for duplicate animation or gesture logic
+- ensure the Canvas fallback is still only a fallback and was not accidentally made a second live renderer after Filament succeeds
+- remove temporary debug code
+- inspect final diff for unrelated files and generated artifacts
 
-## Next visual phase after this foundation
-Once the real device proves the Filament path:
-- replace primitive prototype geometry with a production scenic environment pack
-- HDR IBL / sky environment
-- higher-detail terrain and foliage
-- physically wet materials
-- GPU rain / snow particles
-- cloud-volume / layered cloud material work
-- water normal animation and stronger reflections
-- lightning that illuminates the entire 3D scene
-- color grading / exposure curves
-- quality presets with Ultra tuned for flagship devices
-- move the same renderer architecture into the live wallpaper
+## Backlog after this gate
+The v0.4.1 interaction/atmosphere pass does not magically turn the tiny prototype GLB into final cinematic art. Once this branch is proven on-device, the same renderer can receive:
+- a production scenic environment asset replacing the prototype GLB
+- higher-detail terrain / foliage
+- physically wet materials and animated water normals
+- HDR image-based lighting
+- more advanced cloud volume/layer work
+- scene-wide lightning illumination
+- quality presets
+- eventual reuse in the live WallpaperService
+
+Those remain behind the current validation gate rather than being stacked blindly into this branch.
 
 ## Next step
-Run exact-head Android CI on the v0.4.0 Filament foundation. Fix real API/build failures before merge. Then install the exact green APK on the Samsung and judge Filament itself before adding production-quality scene assets.
+Run exact-head Android CI for the v0.4.1 branch, fix any compile/API/regression failures, inspect the final diff, then install the exact green APK on the Samsung for the real visual/interaction gate.
