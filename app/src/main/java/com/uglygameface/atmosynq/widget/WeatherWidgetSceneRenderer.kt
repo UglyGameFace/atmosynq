@@ -18,10 +18,21 @@ object WeatherWidgetSceneRenderer {
     private const val OUTPUT_WIDTH = 320
     private const val OUTPUT_HEIGHT = 187
 
-    fun render(snapshot: WeatherSnapshot, frameIndex: Int = 0): Bitmap {
-        val bitmap = Bitmap.createBitmap(OUTPUT_WIDTH, OUTPUT_HEIGHT, Bitmap.Config.ARGB_8888)
+    fun render(snapshot: WeatherSnapshot, frameIndex: Int = 0): Bitmap =
+        renderInternal(snapshot, frameIndex, OUTPUT_WIDTH, OUTPUT_HEIGHT)
+
+    fun renderHero(snapshot: WeatherSnapshot, frameIndex: Int = 0): Bitmap =
+        renderInternal(snapshot, frameIndex, WIDTH, HEIGHT)
+
+    private fun renderInternal(
+        snapshot: WeatherSnapshot,
+        frameIndex: Int,
+        outputWidth: Int,
+        outputHeight: Int
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.scale(OUTPUT_WIDTH / WIDTH.toFloat(), OUTPUT_HEIGHT / HEIGHT.toFloat())
+        canvas.scale(outputWidth / WIDTH.toFloat(), outputHeight / HEIGHT.toFloat())
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         drawSky(canvas, paint, snapshot)
@@ -29,12 +40,18 @@ object WeatherWidgetSceneRenderer {
         drawClouds(canvas, paint, snapshot, frameIndex)
 
         when {
-            isSnow(snapshot.weatherCode) || snapshot.snowfallCm > 0.0 -> drawSnow(canvas, paint, snapshot, frameIndex)
-            isRain(snapshot.weatherCode) || snapshot.rainMm + snapshot.showersMm > 0.0 -> drawRain(canvas, paint, snapshot, frameIndex)
+            isSnow(snapshot.weatherCode) || snapshot.snowfallCm > 0.0 ->
+                drawSnow(canvas, paint, snapshot, frameIndex)
+            isRain(snapshot.weatherCode) || snapshot.rainMm + snapshot.showersMm > 0.0 ->
+                drawRain(canvas, paint, snapshot, frameIndex)
         }
 
-        if (isFog(snapshot.weatherCode) || snapshot.visibilityM < 8_000.0) drawFog(canvas, paint, snapshot, frameIndex)
-        if (isThunder(snapshot.weatherCode) && frameIndex % 3 == 1) drawLightning(canvas, paint)
+        if (isFog(snapshot.weatherCode) || snapshot.visibilityM < 8_000.0) {
+            drawFog(canvas, paint, snapshot, frameIndex)
+        }
+        if (isThunder(snapshot.weatherCode) && frameIndex % 3 == 1) {
+            drawLightning(canvas, paint)
+        }
 
         drawVignette(canvas, paint)
         return bitmap
