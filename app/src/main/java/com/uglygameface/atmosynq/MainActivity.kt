@@ -776,7 +776,11 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(10), dp(12), dp(10), dp(12))
-            background = Color.TRANSPARENT
+            background = roundedBackground(
+                if (label == "Now") COLOR_HOURLY_ACTIVE else COLOR_CARD_SOFT,
+                16,
+                if (label == "Now") COLOR_SEGMENT_STROKE else COLOR_STROKE
+            )
 
             addView(
                 TextView(this@MainActivity).apply {
@@ -866,11 +870,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = roundedBackground(
-                if (label == "Now") COLOR_HOURLY_ACTIVE else COLOR_CARD_SOFT,
-                16,
-                if (label == "Now") COLOR_SEGMENT_STROKE else COLOR_STROKE
-            )
+            background = Color.TRANSPARENT
 
             addView(
                 TextView(this@MainActivity).apply {
