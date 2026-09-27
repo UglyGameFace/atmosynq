@@ -15,10 +15,13 @@ import kotlin.random.Random
 object WeatherWidgetSceneRenderer {
     private const val WIDTH = 720
     private const val HEIGHT = 420
+    private const val OUTPUT_WIDTH = 480
+    private const val OUTPUT_HEIGHT = 280
 
     fun render(snapshot: WeatherSnapshot): Bitmap {
-        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(OUTPUT_WIDTH, OUTPUT_HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        canvas.scale(OUTPUT_WIDTH / WIDTH.toFloat(), OUTPUT_HEIGHT / HEIGHT.toFloat())
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         drawSky(canvas, paint, snapshot)
