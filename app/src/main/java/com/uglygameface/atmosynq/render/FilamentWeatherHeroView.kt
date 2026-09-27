@@ -15,6 +15,8 @@ import com.google.android.filament.Skybox
 import com.google.android.filament.View as FilamentView
 import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.Utils
+import com.uglygameface.atmosynq.location.LocationSceneProfile
+import com.uglygameface.atmosynq.location.TerrainKind
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import java.nio.ByteBuffer
 import kotlin.math.abs
@@ -36,7 +38,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private var skybox: Skybox? = null
     private var indirectLight: IndirectLight? = null
     private var snapshot: WeatherSnapshot? = null
-    private var sceneProfile: SceneProfile = SceneProfile.DEFAULT
+    private var sceneProfile: LocationSceneProfile? = null
 
     private var animated = true
     private var attached = false
@@ -149,7 +151,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         fxOverlay.setAnimated(animated)
     }
 
-    fun setSceneProfile(profile: SceneProfile) {
+    fun setSceneProfile(profile: LocationSceneProfile?) {
         sceneProfile = profile
         fallback.setSceneProfile(profile)
         fxOverlay.setSceneProfile(profile)
@@ -479,7 +481,13 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private fun applySceneProfile(v: ModelViewer) {
         val asset = v.asset ?: return
         val tm = v.engine.transformManager
-        val mountainScale = sceneProfile.mountainScale
+        val mountainScale =
+            when (sceneProfile?.terrain) {
+                TerrainKind.MOUNTAIN -> 1.0f
+                TerrainKind.ROLLING -> 0.24f
+                TerrainKind.FLAT -> 0.015f
+                null -> 0.08f
+            }
 
         tm.openLocalTransformTransaction()
         try {
