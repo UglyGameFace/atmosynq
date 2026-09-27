@@ -14,7 +14,6 @@ import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.Utils
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import java.nio.ByteBuffer
-import java.util.Base64
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -244,13 +243,10 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     }
 
     private fun loadAtmosynqScene(v: ModelViewer) {
-        val encoded = context.assets
+        val bytes = context.assets
             .open(SCENE_ASSET)
-            .bufferedReader()
-            .use { it.readText() }
-            .trim()
+            .use { it.readBytes() }
 
-        val bytes = Base64.getDecoder().decode(encoded)
         require(bytes.size >= 20) { "Atmosynq Filament scene is too small" }
         require(
             bytes[0] == 'g'.code.toByte() &&
@@ -451,7 +447,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     }
 
     companion object {
-        private const val SCENE_ASSET = "filament/atmos_scene.glb.b64"
+        private const val SCENE_ASSET = "filament/atmos_scene.glb"
 
         private val CLOUDS = listOf(
             "Cloud0",
