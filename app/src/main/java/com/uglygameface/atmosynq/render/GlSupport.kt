@@ -28,6 +28,7 @@ internal object GlSupport {
         uniform float uCloudiness;
         uniform float uFog;
         uniform float uLightning;
+        uniform float uSurfaceBrightness;
 
         void main() {
             vec4 src;
@@ -67,6 +68,7 @@ internal object GlSupport {
             vec3 fogColor = mix(vec3(0.60, 0.69, 0.76), vec3(0.76, 0.80, 0.82), uDaylight);
             color = mix(color, fogColor, uFog * 0.54);
             color = mix(color, vec3(1.0), uLightning * 0.72);
+            color *= uSurfaceBrightness;
 
             gl_FragColor = vec4(clamp(color, 0.0, 1.0), src.a);
         }
