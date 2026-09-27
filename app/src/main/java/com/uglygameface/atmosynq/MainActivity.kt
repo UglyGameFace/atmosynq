@@ -755,7 +755,10 @@ class MainActivity : Activity() {
                     latitude = place.latitude,
                     longitude = place.longitude,
                     savedAtEpochMs = System.currentTimeMillis(),
-                    displayName = place.shortLabel(),
+                    displayName =
+                        matchedPostal?.let { postcode ->
+                            "${place.shortLabel()} • $postcode"
+                        } ?: place.shortLabel(),
                     locality = place.name,
                     admin1 = place.admin1,
                     countryCode = place.countryCode,
