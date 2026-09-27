@@ -96,6 +96,12 @@ class MainActivity : Activity() {
         if (::animatedTab.isInitialized) applyMotionMode()
     }
 
+    override fun onPause() {
+        brandAnimator?.cancel()
+        brandAnimator = null
+        super.onPause()
+    }
+
     private fun buildUi(): ScrollView {
         val scroll = ScrollView(this).apply {
             isFillViewport = true
