@@ -12,9 +12,11 @@ import android.os.Looper
 import android.view.Surface
 import android.view.SurfaceHolder
 import com.uglygameface.atmosynq.weather.WeatherVisualState
+import com.uglygameface.atmosynq.wallpaper.WallpaperSurfaceProfile
 import java.nio.FloatBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -22,7 +24,8 @@ import kotlin.random.Random
 internal class WeatherRendererThread(
     private val context: Context,
     private val holder: SurfaceHolder,
-    private val visualProvider: () -> WeatherVisualState
+    private val visualProvider: () -> WeatherVisualState,
+    initialSurfaceProfile: WallpaperSurfaceProfile = WallpaperSurfaceProfile.AUTO
 ) : Thread("AtmosynqGL") {
 
     private val running = AtomicBoolean(true)
@@ -30,6 +33,7 @@ internal class WeatherRendererThread(
     private val frameAvailable = AtomicBoolean(false)
     private val requestedWidth = AtomicInteger(1)
     private val requestedHeight = AtomicInteger(1)
+    private val surfaceProfile = AtomicReference(initialSurfaceProfile)
 
     private var mediaPlayer: MediaPlayer? = null
     private var surfaceTexture: SurfaceTexture? = null
@@ -50,6 +54,7 @@ internal class WeatherRendererThread(
     private var uCloudiness = -1
     private var uFog = -1
     private var uLightning = -1
+    private var uSurfaceBrightness = -1
 
     private var currentVisual = WeatherVisualState.DEFAULT
     private var targetVisual = WeatherVisualState.DEFAULT
@@ -67,6 +72,10 @@ internal class WeatherRendererThread(
     fun resize(width: Int, height: Int) {
         requestedWidth.set(max(1, width))
         requestedHeight.set(max(1, height))
+    }
+
+    fun setSurfaceProfile(profile: WallpaperSurfaceProfile) {
+        surfaceProfile.set(profile)
     }
 
     fun shutdown() {
@@ -157,7 +166,7 @@ internal class WeatherRendererThread(
                 drawFrame(currentVisual, dt)
                 EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, nowNanos)
                 if (!EGL14.eglSwapBuffers(eglDisplay, eglSurface)) break
-                sleepQuietly(30)
+                sleepQuietly(surfaceProfile.get().frameDelayMs)
             }
         } finally {
             releaseGl()
@@ -182,6 +191,7 @@ internal class WeatherRendererThread(
         uCloudiness = GLES20.glGetUniformLocation(videoProgram, "uCloudiness")
         uFog = GLES20.glGetUniformLocation(videoProgram, "uFog")
         uLightning = GLES20.glGetUniformLocation(videoProgram, "uLightning")
+        uSurfaceBrightness = GLES20.glGetUniformLocation(videoProgram, "uSurfaceBrightness")
 
         positionBuffer.clear()
         positionBuffer.put(floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)).flip()
@@ -247,6 +257,7 @@ internal class WeatherRendererThread(
         GLES20.glUniform1f(uCloudiness, state.cloudiness)
         GLES20.glUniform1f(uFog, state.fogIntensity)
         GLES20.glUniform1f(uLightning, lightningAmount())
+        GLES20.glUniform1f(uSurfaceBrightness, surfaceProfile.get().brightnessScale)
 
         GLES20.glEnableVertexAttribArray(aPosition)
         GLES20.glVertexAttribPointer(aPosition, 2, GLES20.GL_FLOAT, false, 0, positionBuffer)
