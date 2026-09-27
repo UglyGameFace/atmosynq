@@ -355,12 +355,26 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     ) {
         val w = width.toFloat()
         val h = height.toFloat()
-        val count = if (dense) 26 else 17
+        val population =
+            (sceneProfile.population ?: 0L)
+                .coerceAtLeast(0L)
+        val populationBoost =
+            (population / 500_000L)
+                .toInt()
+                .coerceIn(0, 10)
+        val count =
+            (if (dense) 22 else 14) +
+                populationBoost
         val baseY = h * 0.91f
         val slot = w / count
+        val locationSeed = sceneProfile.label.hashCode()
 
         repeat(count) { index ->
-            val seed = hash(3_000 + index * 97)
+            val seed =
+                hash(
+                    locationSeed xor
+                        (3_000 + index * 97)
+                )
             val widthFactor = 0.58f + ((seed and 0xff) / 255f) * 0.34f
             val maxHeight = if (dense) 0.28f else 0.19f
             val heightFactor =
@@ -438,9 +452,14 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         val count = if (dense) 11 else 8
         val slot = w / count
         val baseY = h * 0.925f
+        val locationSeed = sceneProfile.label.hashCode()
 
         repeat(count) { index ->
-            val seed = hash(5_100 + index * 83)
+            val seed =
+                hash(
+                    locationSeed xor
+                        (5_100 + index * 83)
+                )
             val houseWidth = slot * (0.58f + (seed and 0xff) / 255f * 0.20f)
             val houseHeight = h * (0.050f + ((seed shr 8) and 0xff) / 255f * 0.035f)
             val x =
