@@ -717,8 +717,10 @@ def build_scene(output: Path):
         )
 
     for geometry in scene.geometry.values():
+        # All generator primitives already carry valid winding/normals. Avoid
+        # trimesh.fix_normals() here because that pulls SciPy into CI merely to
+        # re-evaluate connected components on meshes we just constructed.
         geometry.remove_unreferenced_vertices()
-        geometry.fix_normals()
 
     blob = scene.export(file_type="glb")
     output.parent.mkdir(parents=True, exist_ok=True)
