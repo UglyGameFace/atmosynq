@@ -1,0 +1,14 @@
+.gradle/
+local.properties
+.idea/
+*.iml
+build/
+**/build/
+.externalNativeBuild/
+.cxx/
+*.jks
+*.keystore
+*.log
+.DS_Store
+# Optional private/licensed scene asset; do not commit third-party media.
+app/src/main/res/raw/scene_neutral.mp4

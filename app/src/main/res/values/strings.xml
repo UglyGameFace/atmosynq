@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Atmosynq</string>
+    <string name="wallpaper_name">Atmosynq Live Weather</string>
+    <string name="wallpaper_description">Animated scene synchronized with your local daylight and real-world weather.</string>
+</resources>
