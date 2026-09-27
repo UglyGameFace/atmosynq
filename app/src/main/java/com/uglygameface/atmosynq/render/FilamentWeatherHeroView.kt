@@ -3,8 +3,11 @@ package com.uglygameface.atmosynq.render
 import android.content.Context
 import android.graphics.Color
 import android.view.Choreographer
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.TextureView
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
@@ -14,6 +17,7 @@ import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.Utils
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import java.nio.ByteBuffer
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -26,6 +30,7 @@ import kotlin.math.sin
 class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private val fallback = WeatherHeroView(context)
     private val filamentSurface = TextureView(context)
+    private val fxOverlay = WeatherFxOverlayView(context)
 
     private var viewer: ModelViewer? = null
     private var skybox: Skybox? = null
@@ -39,7 +44,44 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private var filamentReady = false
     private var startedAtNanos = 0L
 
+    private var cameraYaw = 0f
+    private var cameraPitch = 0f
+    private var cameraDistance = BASE_CAMERA_DISTANCE
+    private var downTouchX = 0f
+    private var downTouchY = 0f
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
+    private var sceneDragging = false
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+
     private val baseTransforms = mutableMapOf<String, FloatArray>()
+
+    private val scaleDetector =
+        ScaleGestureDetector(
+            context,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    return true
+                }
+
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val factor = detector.scaleFactor
+                    if (!factor.isFinite() || factor <= 0f) return false
+
+                    cameraDistance =
+                        (cameraDistance / factor)
+                            .coerceIn(MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE)
+                    updateInteractionParallax()
+                    requestRender()
+                    return true
+                }
+
+                override fun onScaleEnd(detector: ScaleGestureDetector) {
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+        )
 
     private val frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
         framePosted = false
@@ -51,6 +93,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         if (animated) {
             animateScene(v, seconds)
         }
+        applyCameraPose(v, seconds)
         applyWeatherLighting(v)
 
         val rendered = runCatching { v.render(frameTimeNanos) }.getOrDefault(false)
@@ -79,6 +122,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         filamentSurface.alpha = 0f
         filamentSurface.isOpaque = true
+        filamentSurface.isClickable = false
         addView(
             filamentSurface,
             LayoutParams(
@@ -87,13 +131,29 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             )
         )
 
+        fxOverlay.isClickable = false
+        addView(
+            fxOverlay,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT
+            )
+        )
+
+        isClickable = true
+        isFocusable = true
         fallback.setAnimated(animated)
+        fxOverlay.setAnimated(animated)
     }
 
     fun setWeather(snapshot: WeatherSnapshot?) {
         this.snapshot = snapshot
         fallback.setWeather(snapshot)
-        viewer?.let { applyWeatherLighting(it) }
+        fxOverlay.setWeather(snapshot)
+        viewer?.let {
+            applyWeatherLighting(it)
+            applyCameraPose(it, 0f)
+        }
         requestRender()
     }
 
@@ -102,6 +162,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         // Only spend Canvas frames while Filament is not yet carrying the scene.
         fallback.setAnimated(animated && !filamentReady)
+        fxOverlay.setAnimated(animated)
 
         if (animated) {
             startedAtNanos = 0L
@@ -116,7 +177,92 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         super.onAttachedToWindow()
         attached = true
         ensureFilament()
+        updateInteractionParallax()
         scheduleFrame()
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleDetector.onTouchEvent(event)
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downTouchX = event.x
+                downTouchY = event.y
+                lastTouchX = event.x
+                lastTouchY = event.y
+                sceneDragging = false
+                return true
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (scaleDetector.isInProgress) {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    return true
+                }
+
+                val totalDx = event.x - downTouchX
+                val totalDy = event.y - downTouchY
+
+                if (!sceneDragging &&
+                    abs(totalDx) > touchSlop &&
+                    abs(totalDx) > abs(totalDy) * 1.12f
+                ) {
+                    sceneDragging = true
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
+
+                if (sceneDragging) {
+                    val dx = event.x - lastTouchX
+                    val dy = event.y - lastTouchY
+                    val safeWidth = width.coerceAtLeast(1).toFloat()
+                    val safeHeight = height.coerceAtLeast(1).toFloat()
+
+                    cameraYaw =
+                        (cameraYaw - dx / safeWidth * 0.78f)
+                            .coerceIn(-MAX_CAMERA_YAW, MAX_CAMERA_YAW)
+                    cameraPitch =
+                        (cameraPitch + dy / safeHeight * 0.46f)
+                            .coerceIn(-MAX_CAMERA_PITCH, MAX_CAMERA_PITCH)
+
+                    updateInteractionParallax()
+                    requestRender()
+                }
+
+                lastTouchX = event.x
+                lastTouchY = event.y
+                return true
+            }
+
+            MotionEvent.ACTION_UP -> {
+                val moved =
+                    abs(event.x - downTouchX) + abs(event.y - downTouchY)
+                if (!sceneDragging &&
+                    !scaleDetector.isInProgress &&
+                    moved < touchSlop * 2f
+                ) {
+                    performClick()
+                    fxOverlay.addTouchPulse(event.x, event.y)
+                    requestRender()
+                }
+
+                sceneDragging = false
+                parent?.requestDisallowInterceptTouchEvent(false)
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                sceneDragging = false
+                parent?.requestDisallowInterceptTouchEvent(false)
+                return true
+            }
+        }
+
+        return true
     }
 
     override fun onDetachedFromWindow() {
@@ -262,16 +408,42 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         v.cameraFocalLength = 34f
         v.cameraNear = 0.1f
         v.cameraFar = 100f
+        applyCameraPose(v, 0f)
+    }
+
+    private fun applyCameraPose(v: ModelViewer, seconds: Float) {
+        val idleYaw =
+            if (animated) sin(seconds * 0.15f) * 0.018f else 0f
+        val idleLift =
+            if (animated) sin(seconds * 0.21f) * 0.045f else 0f
+
+        val yaw = (cameraYaw + idleYaw).toDouble()
+        val targetX = 0.0
+        val targetY = (1.15f + cameraPitch * 1.10f).toDouble()
+        val targetZ = -2.9
+        val distance = cameraDistance.toDouble()
+
+        val eyeX = sin(yaw) * distance * 0.78
+        val eyeY = (3.0f + cameraPitch * 4.25f + idleLift).toDouble()
+        val eyeZ = targetZ + cos(yaw) * distance
+
         v.camera.lookAt(
-            0.0,
-            3.0,
-            13.5,
-            0.0,
-            1.15,
-            -2.9,
+            eyeX,
+            eyeY,
+            eyeZ,
+            targetX,
+            targetY,
+            targetZ,
             0.0,
             1.0,
             0.0
+        )
+    }
+
+    private fun updateInteractionParallax() {
+        fxOverlay.setParallax(
+            cameraYaw / MAX_CAMERA_YAW,
+            cameraPitch / MAX_CAMERA_PITCH
         )
     }
 
@@ -448,6 +620,11 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
     companion object {
         private const val SCENE_ASSET = "filament/atmos_scene.glb"
+        private const val BASE_CAMERA_DISTANCE = 16.4f
+        private const val MIN_CAMERA_DISTANCE = 13.2f
+        private const val MAX_CAMERA_DISTANCE = 19.2f
+        private const val MAX_CAMERA_YAW = 0.42f
+        private const val MAX_CAMERA_PITCH = 0.22f
 
         private val CLOUDS = listOf(
             "Cloud0",
