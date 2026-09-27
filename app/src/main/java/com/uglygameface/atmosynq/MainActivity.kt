@@ -24,7 +24,9 @@ import android.os.CancellationSignal
 import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
+import android.text.TextUtils
 import android.view.Gravity
+import android.view.WindowInsets
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -126,7 +128,34 @@ class MainActivity : Activity() {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(18), dp(14), dp(18), dp(30))
+            setPadding(dp(18), dp(10), dp(18), dp(30))
+        }
+
+        scroll.setOnApplyWindowInsetsListener { _, insets ->
+            val topInset: Int
+            val bottomInset: Int
+
+            if (Build.VERSION.SDK_INT >= 30) {
+                val bars =
+                    insets.getInsets(
+                        WindowInsets.Type.systemBars()
+                    )
+                topInset = bars.top
+                bottomInset = bars.bottom
+            } else {
+                @Suppress("DEPRECATION")
+                topInset = insets.systemWindowInsetTop
+                @Suppress("DEPRECATION")
+                bottomInset = insets.systemWindowInsetBottom
+            }
+
+            content.setPadding(
+                dp(18),
+                topInset + dp(10),
+                dp(18),
+                bottomInset + dp(26)
+            )
+            insets
         }
         scroll.addView(
             content,
@@ -136,30 +165,111 @@ class MainActivity : Activity() {
             )
         )
 
-        brandLogo = ImageView(this).apply {
-            setImageResource(R.drawable.atmosynq_logo)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            adjustViewBounds = true
-            contentDescription = "Atmosynq"
-        }
-        content.addView(
+        val brandHeader =
+            FrameLayout(this).apply {
+                clipChildren = false
+            }
+
+        val brandChip =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(7), dp(5), dp(13), dp(5))
+                background =
+                    gradientBackground(
+                        intArrayOf(
+                            Color.argb(238, 5, 18, 35),
+                            Color.argb(238, 8, 30, 54)
+                        ),
+                        25,
+                        Color.rgb(58, 173, 255)
+                    )
+                elevation = dp(5).toFloat()
+            }
+
+        brandLogo =
+            ImageView(this).apply {
+                setImageResource(R.drawable.atmosynq_logo)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = "Atmosynq"
+            }
+        brandChip.addView(
             brandLogo,
             LinearLayout.LayoutParams(
-                dp(82),
-                dp(82)
+                dp(40),
+                dp(40)
+            )
+        )
+        brandChip.addView(
+            TextView(this).apply {
+                text = "Atmosynq"
+                textSize = 22f
+                setTextColor(Color.WHITE)
+                typeface =
+                    Typeface.create(
+                        "sans-serif-light",
+                        Typeface.NORMAL
+                    )
+                letterSpacing = 0.015f
+                includeFontPadding = false
+                setPadding(dp(8), 0, 0, 0)
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        brandHeader.addView(
+            brandChip,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                dp(52),
+                Gravity.CENTER
+            )
+        )
+
+        brandHeader.addView(
+            TextView(this).apply {
+                text = "⚙"
+                textSize = 23f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(220, 239, 252))
+                background =
+                    roundedBackground(
+                        Color.argb(178, 7, 25, 43),
+                        22,
+                        Color.argb(170, 75, 150, 205)
+                    )
+                contentDescription = "Atmosynq settings"
+                setOnClickListener {
+                    showQuickSettings()
+                }
+            },
+            FrameLayout.LayoutParams(
+                dp(44),
+                dp(44),
+                Gravity.END or Gravity.CENTER_VERTICAL
+            )
+        )
+
+        content.addView(
+            brandHeader,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(56)
             ).apply {
-                gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = dp(1)
+                bottomMargin = dp(3)
             }
         )
 
         content.addView(
             TextView(this).apply {
                 text = "Weather that comes alive."
-                textSize = 12.5f
-                setTextColor(COLOR_MUTED)
+                textSize = if (primary) 16f else 14f
+                setTextColor(COLOR_TEXT_SECONDARY)
                 gravity = Gravity.CENTER
-                setPadding(0, 0, 0, dp(10))
+                setPadding(0, 0, 0, dp(11))
             },
             matchWrap()
         )
@@ -169,10 +279,16 @@ class MainActivity : Activity() {
             setPadding(dp(4), dp(4), dp(4), dp(4))
             background = roundedBackground(COLOR_SEGMENT_TRACK, 22, COLOR_STROKE)
         }
-        animatedTab = motionTab("Animated") { setMotionMode(true) }
-        staticTab = motionTab("Static") { setMotionMode(false) }
-        motionSwitcher.addView(animatedTab, LinearLayout.LayoutParams(0, dp(42), 1f))
-        motionSwitcher.addView(staticTab, LinearLayout.LayoutParams(0, dp(42), 1f))
+        animatedTab = motionTab("▶  Animated") { setMotionMode(true) }
+        staticTab = motionTab("▣  Static") { setMotionMode(false) }
+        motionSwitcher.addView(
+            animatedTab,
+            LinearLayout.LayoutParams(0, dp(48), 1f)
+        )
+        motionSwitcher.addView(
+            staticTab,
+            LinearLayout.LayoutParams(0, dp(48), 1f)
+        )
         content.addView(
             motionSwitcher,
             matchWrap().apply { bottomMargin = dp(10) }
@@ -180,10 +296,20 @@ class MainActivity : Activity() {
 
         status = TextView(this).apply {
             textSize = 12.5f
-            setTextColor(COLOR_MUTED)
+            setTextColor(Color.rgb(192, 221, 239))
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(7), dp(12), dp(7))
-            background = roundedBackground(COLOR_STATUS_BG, 18, COLOR_STROKE)
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+            background =
+                roundedBackground(
+                    Color.argb(220, 9, 29, 48),
+                    20,
+                    Color.argb(170, 55, 111, 151)
+                )
+            contentDescription =
+                "Weather sync status. Tap to refresh."
+            setOnClickListener {
+                refreshSavedWeather()
+            }
         }
         content.addView(
             status,
@@ -233,48 +359,60 @@ class MainActivity : Activity() {
 
         currentCard.addView(
             TextView(this).apply {
-                text = "LIVE 3D  •  DRAG  •  PINCH  •  TAP"
-                textSize = 9.5f
+                text = "•••"
+                textSize = 15f
                 setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.rgb(202, 239, 255))
+                letterSpacing = 0.08f
+                setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
-                setPadding(dp(9), dp(6), dp(9), dp(6))
-                background = roundedBackground(
-                    Color.argb(150, 5, 21, 38),
-                    14,
-                    Color.argb(150, 82, 195, 255)
-                )
+                background =
+                    roundedBackground(
+                        Color.argb(178, 4, 21, 39),
+                        21,
+                        Color.argb(165, 92, 188, 242)
+                    )
                 contentDescription =
-                    "Interactive live weather scene. Drag to look around, pinch to zoom, tap for atmosphere."
+                    "Live scene controls and information"
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Live weather scene")
+                        .setMessage(
+                            "Drag to look around, pinch to zoom, and tap the scene for atmospheric feedback. The 3D environment changes with the selected place, terrain, local time and weather."
+                        )
+                        .setPositiveButton("Got it", null)
+                        .show()
+                }
             },
             FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                dp(44),
+                dp(44),
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(13)
-                rightMargin = dp(13)
+                topMargin = dp(14)
+                rightMargin = dp(14)
             }
         )
 
         val heroPrimary = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.START
-            setPadding(dp(18), dp(16), dp(18), 0)
+            setPadding(dp(20), dp(18), dp(72), 0)
         }
 
         heroLocation = TextView(this).apply {
-            text = "●  Local weather"
-            textSize = 12.5f
+            text = "⌖  Select a location"
+            textSize = 13.5f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(COLOR_LOCATION)
             gravity = Gravity.START
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
         }
         heroPrimary.addView(heroLocation, matchWrap())
 
         currentTemperature = TextView(this).apply {
             text = "--°"
-            textSize = 70f
+            textSize = 80f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
@@ -314,9 +452,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(10))
             background = roundedBackground(
-                Color.argb(142, 7, 22, 39),
-                20,
-                Color.argb(132, 87, 188, 235)
+                Color.argb(118, 5, 20, 37),
+                22,
+                Color.argb(172, 87, 188, 235)
             )
         }
 
@@ -381,7 +519,7 @@ class MainActivity : Activity() {
             currentCard,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(430)
+                dp(500)
             ).apply {
                 bottomMargin = dp(14)
             }
@@ -394,7 +532,7 @@ class MainActivity : Activity() {
             wallpaperButton,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(58)
+                dp(68)
             ).apply {
                 bottomMargin = dp(10)
             }
@@ -414,13 +552,13 @@ class MainActivity : Activity() {
 
         secondaryActions.addView(
             locationButton,
-            LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(58), 1f).apply {
                 marginEnd = dp(5)
             }
         )
         secondaryActions.addView(
             widgetButton,
-            LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(58), 1f).apply {
                 marginStart = dp(5)
             }
         )
@@ -435,7 +573,10 @@ class MainActivity : Activity() {
             setPadding(dp(12), dp(10), dp(12), dp(12))
             background = roundedBackground(COLOR_SECTION_BG, 22, COLOR_STROKE)
         }
-        hourlySection.addView(sectionTitle("Next 12 Hours"), matchWrap())
+        hourlySection.addView(
+            sectionHeader("Next 12 Hours", "See Details  ›"),
+            matchWrap()
+        )
 
         hourlyContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -466,7 +607,10 @@ class MainActivity : Activity() {
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedBackground(COLOR_SECTION_BG, 22, COLOR_STROKE)
         }
-        dailySection.addView(sectionTitle("7-Day Forecast"), matchWrap())
+        dailySection.addView(
+            sectionHeader("7-Day Forecast", "See More  ›"),
+            matchWrap()
+        )
 
         dailyContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -477,18 +621,9 @@ class MainActivity : Activity() {
             matchWrap().apply { bottomMargin = dp(4) }
         )
 
-        content.addView(Space(this), LinearLayout.LayoutParams(1, dp(12)))
-
         content.addView(
-            TextView(this).apply {
-                text = "Choose any city or postal code worldwide without location permission, or use approximate device location. Saved location stays in app-private storage; background location is not required."
-                textSize = 11.5f
-                setTextColor(COLOR_MUTED)
-                gravity = Gravity.CENTER
-                setLineSpacing(0f, 1.15f)
-                setPadding(dp(8), dp(10), dp(8), 0)
-            },
-            matchWrap()
+            Space(this),
+            LinearLayout.LayoutParams(1, dp(18))
         )
 
         return scroll
@@ -513,7 +648,7 @@ class MainActivity : Activity() {
 
     private fun applySelectedLocation(location: SavedLocation) {
         activeLocation = location
-        heroLocation.text = "●  ${location.heroLabel()}"
+        heroLocation.text = "⌖  ${location.heroLabel()}"
         heroScene.setSceneProfile(
             SceneProfileResolver.resolve(location)
         )
@@ -593,6 +728,58 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun showQuickSettings() {
+        val animated = motionStore.isAnimated()
+        val motionLabel =
+            if (animated) {
+                "Switch to Static mode"
+            } else {
+                "Switch to Animated mode"
+            }
+
+        AlertDialog.Builder(this)
+            .setTitle("Atmosynq")
+            .setItems(
+                arrayOf(
+                    "Choose location",
+                    "Refresh weather",
+                    motionLabel,
+                    "Location & privacy"
+                )
+            ) { _, which ->
+                when (which) {
+                    0 -> showLocationChooser()
+                    1 -> refreshSavedWeather()
+                    2 -> setMotionMode(!animated)
+                    3 ->
+                        AlertDialog.Builder(this)
+                            .setTitle("Location & privacy")
+                            .setMessage(
+                                "City and postal-code search works without device location permission. Approximate current location is optional and Atmosynq does not require background location."
+                            )
+                            .setPositiveButton("OK", null)
+                            .show()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun refreshSavedWeather() {
+        val saved =
+            activeLocation ?: locationStore.load()
+        if (saved == null) {
+            showLocationChooser()
+            return
+        }
+
+        status.text = "Refreshing ${saved.heroLabel()}…"
+        refreshAtmosynqWeather(
+            saved.latitude,
+            saved.longitude
+        )
     }
 
     private fun showLocationChooser() {
@@ -1109,7 +1296,7 @@ class MainActivity : Activity() {
         val selectedLocation =
             activeLocation ?: locationStore.load()
         heroLocation.text =
-            "●  ${selectedLocation?.heroLabel() ?: "Selected location"}"
+            "⌖  ${selectedLocation?.heroLabel() ?: "Selected location"}"
         selectedLocation?.let {
             heroScene.setSceneProfile(
                 SceneProfileResolver.resolve(it)
@@ -1148,7 +1335,7 @@ class MainActivity : Activity() {
             .atZone(zone)
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
 
-        status.text = "●  Synced • $updated"
+        status.text = "●  Synced • $updated    ↻"
     }
 
     private fun renderHourly(report: WeatherReport) {
@@ -1488,7 +1675,7 @@ class MainActivity : Activity() {
                             Color.rgb(20, 119, 245),
                             Color.rgb(141, 82, 255)
                         ),
-                        20,
+                        24,
                         Color.rgb(109, 222, 255)
                     )
                 } else {
@@ -1567,6 +1754,44 @@ class MainActivity : Activity() {
         runCatching {
             LocalDateTime.parse(value)
         }.getOrNull()
+
+    private fun sectionHeader(
+        title: String,
+        action: String
+    ): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(2), dp(8), dp(2), dp(7))
+
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = title
+                    textSize = 17f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = action
+                    textSize = 11.5f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(COLOR_ACCENT)
+                    gravity = Gravity.END
+                },
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+        }
 
     private fun sectionTitle(text: String): TextView =
         TextView(this).apply {
