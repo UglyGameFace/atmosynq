@@ -77,7 +77,8 @@ data class HourlyForecast(
     val apparentTemperatureC: Double,
     val precipitationProbabilityPct: Int,
     val weatherCode: Int,
-    val windSpeedKmh: Double
+    val windSpeedKmh: Double,
+    val isDay: Boolean
 )
 
 data class DailyForecast(
