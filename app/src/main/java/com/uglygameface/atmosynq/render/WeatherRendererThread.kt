@@ -241,7 +241,7 @@ internal class WeatherRendererThread(
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, videoTexture)
         GLES20.glUniform1i(uVideo, 0)
         GLES20.glUniform1f(uHasVideo, if (mediaPlayer != null) 1f else 0f)
-        GLES20.glUniformatrix4fv(uTexMatrix, 1, false, textureMatrix, 0)
+        GLES20.glUniformMatrix4fv(uTexMatrix, 1, false, textureMatrix, 0)
         GLES20.glUniform1f(uDaylight, state.daylight)
         GLES20.glUniform1f(uSunsetWarmth, state.sunsetWarmth)
         GLES20.glUniform1f(uCloudiness, state.cloudiness)
