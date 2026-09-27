@@ -1,117 +1,101 @@
 # Active Task
 
 ## Active task / outcome
-Ship Atmosynq v0.3.0 as a real weather-first UI reset based on the approved premium dashboard mockup, without faking unsupported surfaces or replacing the app with a screenshot.
+Ship Atmosynq v0.3.1 to fix the two real-device failures still visible in v0.3.0: the app logo is blank and the weather experience still does not feel alive.
 
-## Current state
-PR #9 — `v0.3.0: premium weather-first dashboard reset` — is merged into `main`.
+## Real-device evidence
+v0.3.0 device screenshots showed:
+- the top brand area rendered as an empty blue capsule with no visible logo
+- launcher/recents branding could still fall back because the bundled logo resource was malformed
+- synced overcast weather rendered as large gray cloud blobs over flat landscape geometry
+- motion existed technically, but the still appearance and movement did not read as a living atmospheric scene
+- unsynced state was visually dead because the hero renderer returned without drawing when no WeatherSnapshot existed
 
-Merged functional SHA:
-`af23a9c54841849817640ee3b8c562a63a7b742d`
+## Root cause
+The bundled `drawable-nodpi/atmosynq_logo.webp` was a malformed 7.5 KB image. Build/resource linking passed because AAPT can package the file without proving Android can decode it at runtime.
 
-## Baseline
-- current production/main before this branch: `c41bb5de705e044b551dcb047e06d623fd80f337`
-- v0.2.2 fixed the missing header logo and removed the three-frame slideshow from the Android app hero
-- the real-device screenshots then showed the overall layout still looked too boxy/dev-like
+The hero renderer also used simple large oval clouds and returned immediately when weather was null.
 
-## v0.3.0 design contract
-The approved mockup is a visual target, not a bitmap to paste into the app.
+## Approved logo source
+The exact previously approved integrated phone-safe logo was recovered:
+- source file: `neon_atmosynq_vortex_icon.png`
+- original: 1254x1254 PNG
+- contains the luminous blue/cyan/violet vortex and the word `Atmosynq` inside the logo itself
 
-Real code must implement:
-- compact integrated Atmosynq brand chip
-- weather-first hierarchy
-- premium animated hero scene
-- glass-style weather metrics
-- live wallpaper as the strongest CTA
-- current-location and widget actions as secondary controls
-- one unified hourly surface
-- one unified 7-day surface
-- fewer borders / fewer stacked pills
-- Animated and Static modes remain real behavior, not decoration
+A valid optimized WebP version is now committed and verified by decoding it directly from the branch.
 
-## Implemented
-### Branding
-- removed the oversized square header treatment
-- added a compact integrated brand chip
-- chip uses the regular Atmosynq vortex drawable already proven to render on-device
-- Atmosynq name stays inside the same branded element
-- tagline reduced so branding no longer dominates the weather
+## Current branch
+`fix/v0.3.1-real-logo-live-scene`
 
-### Weather hero
-- expanded the hero into the main visual focus
-- current temperature, condition, high/low and precip remain in the hero
-- added glass-style metric strip:
-  - feels like
-  - humidity
-  - wind + gusts
-  - visibility
-  - precipitation
-  - sunrise / sunset
+## Implemented logo repair
+- replaced malformed `atmosynq_logo.webp` with valid approved integrated logo
+- replaced fallback launcher raster with the same approved logo
+- replaced round launcher raster with the same approved logo
+- adaptive icon foreground already references `atmosynq_logo`, so it now receives the valid asset
+- changed in-app branding from the empty wide capsule to a real 112dp square integrated logo
+- Animated mode gives the logo a subtle float / pulse / glow
+- Static mode leaves the logo still
+- brand animator stops while the Activity is paused
 
-### Continuous scene renderer
-`WeatherHeroView` now renders a layered scene in code:
-- weather-driven sky gradient
-- atmospheric sun/moon glow
-- moving cloud banks
-- distant mountain silhouettes
-- foreground ridge
-- lake / reflection layer
-- moving rain
-- drifting snow
-- moving fog
-- brief thunder lightning
-- bottom vignette for text legibility
-- Animated mode targets ~30 FPS
-- Static mode renders the same scene without continuous redraws
+## Implemented live-scene repair
+### Unsynced state
+The hero now renders even before location/weather sync:
+- deep atmospheric blue background
+- moving cyan/purple light ribbons
+- drifting light particles
+- animated water/ripple layer
+- vignette for readable overlay text
 
-This is intentionally not advertised as photo-real scenery. The public repo does not yet ship a licensed scenic asset pack.
+### Synced weather
+The hero now renders:
+- breathing weather-driven sky gradient
+- moving atmospheric sun/moon glow
+- two branded cyan/purple sky ribbons
+- multi-speed parallax cloud layers
+- smoother curved landscape silhouettes
+- animated water reflections
+- wind-driven atmospheric streaks
+- continuous rain when active
+- drifting snow when active
+- moving fog when active
+- brief lightning for thunderstorms
+- readable vignette
 
-### Action hierarchy
-- Set Live Wallpaper is now the primary gradient CTA
-- Current Location and Add Home Widget are secondary side-by-side actions
-- wallpaper remains disabled until a weather location is available
-
-### Forecast surfaces
-- hourly forecast moved into one glass section
-- current hour gets a highlighted card
-- 7-day forecast moved into one unified panel
-- daily rows use dividers instead of seven separate rounded boxes
+Animated mode redraws continuously through `postInvalidateOnAnimation()`.
+Static mode renders the same current scene without continuous redraws.
 
 ## Version
-- versionCode: 6
-- versionName: 0.3.0
+- versionCode: 7
+- versionName: 0.3.1
 
-## Validation
-PR exact head `267fe7db45bc2732f3020ae1fad60726ca4021d6` passed Actions run #48: resource linking, Kotlin compilation, unit tests, debug APK assembly, and artifact upload all passed.
+## Validation gate
+Open a fresh PR to `main`.
 
-PR #9 then merged to `main` as `af23a9c54841849817640ee3b8c562a63a7b742d`.
+Exact-head CI must pass:
+- Android resource linking
+- Kotlin compilation
+- unit tests
+- debug APK assembly
+- artifact upload
 
-Post-merge main Actions run #49 passed the functional build steps and uploaded the exact APK artifact.
+Do not merge until exact-head CI is green.
 
 ## Real-device validation after build
-1. compact brand chip visibly shows vortex + Atmosynq
-2. no giant empty logo square
-3. hero visually dominates the screen
-4. hero weather motion is smooth, not frame-flipping
-5. scenic depth reads as sky / mountains / water rather than blob clouds
-6. Static mode stops hero animation
-7. Set Live Wallpaper is visually the primary action
-8. location + widget controls fit without clipping
-9. hourly section feels like one surface
-10. 7-day forecast feels like one surface
-11. no regression in location capture, widget pinning, wallpaper picker or forecasts
-12. no crash, heat, or obvious UI-thread jank
+1. approved vortex + Atmosynq name visibly render at top
+2. launcher and recents use Atmosynq instead of Android fallback
+3. logo is not cropped and name remains inside mark
+4. unsynced hero is visibly alive
+5. synced overcast scene no longer looks like giant gray blob clouds
+6. sky ribbons / haze / cloud parallax visibly move in Animated mode
+7. water reflections visibly move
+8. wind streaks respond to current wind
+9. rain/snow/fog/thunder remain weather-driven
+10. Static mode stops hero + logo motion
+11. no regression in location, forecasts, widget pinning or wallpaper picker
+12. no crash or obvious heat/jank regression
 
 ## Known boundary
-The public repo intentionally does not bundle third-party/copyrighted wallpaper video. The live wallpaper still falls back to its procedural renderer unless an original/licensed private `scene_neutral.mp4` is supplied.
-
-## Validated APK
-- versionName: 0.3.0
-- versionCode: 6
-- source main SHA: `af23a9c54841849817640ee3b8c562a63a7b742d`
-- artifact: `atmosynq-debug-apk`
-- APK size: 1,004,422 bytes
-- APK SHA-256: `77369d0249d21e7a5fd81c46d8bcd9a697130a00046d3284652e4ea7c4916f29`
+The public repo still does not ship third-party/copyrighted scenic footage. The dashboard scene is a real procedural renderer, not fake photo-real artwork.
 
 ## Next step
-Install the exact v0.3.0 APK on the Android device and judge the real UI against the approved mockup: logo visibility, hero depth, action hierarchy, forecast surfaces, Animated/Static motion, clipping, heat, and smoothness. Root-cause observed device issues before starting Apple work.
+Run exact-head Android CI for v0.3.1, repair any real failures, merge only when green, verify post-merge main CI, then provide the exact v0.3.1 APK for device testing.
