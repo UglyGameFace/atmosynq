@@ -23,7 +23,7 @@ After that green gate, the same active task continued into the weather dashboard
 - hourly clear-sky icons now use the hour's actual day/night state;
 - saved location/weather SharedPreferences are excluded from Android backup/device-transfer extraction, with app backup disabled.
 
-Final exact-head CI after those review fixes is the current gate.
+Exact-head CI for the review fixes passed at `99b801f08c92113cf398d9198d33415239094c70` in Actions run #19: all 13 unit tests passed, debug APK assembly passed, and artifact upload passed. A final documentation-only head check is the current gate before merge.
 
 ## Findings / root cause
 The source clip has nighttime color and rain permanently baked into every frame. Overlaying weather directly would make dry/day conditions wrong, so the source is first de-rained with a 9-frame temporal median and then relit/effected at runtime.
@@ -65,7 +65,7 @@ MainActivity -> LocationStore -> OpenMeteoClient -> WeatherReport/WeatherSnapsho
 - Neutralized loop preserves 302 source frames at ~10.07 s / 30 fps.
 - Weather visual mapping regression checks pass for snow-without-fake-rain, condition fallbacks, rain+showers, WMO 97 lightning, fog, and offline-midnight daylight rollover.
 - Baseline exact-head Android CI at `e0ec4afb7acd82acb7d14c95ae38e5f658dc3ce8` passed unit tests, APK assembly, and artifact upload.
-- Final exact-head CI including dashboard review fixes is pending and must pass before merge/completion.
+- Exact-head CI at `99b801f08c92113cf398d9198d33415239094c70` passed all 13 unit tests, APK assembly, and artifact upload in Actions run #19.
 
 ## Cleanup
 - Audio removed from wallpaper video.
@@ -98,8 +98,8 @@ None currently known. The README is intentional project documentation and has be
 - Baseline main before source import: `5f4331981af8c54119f4372bd8c4e8f686fca51a`
 - Implementation branch: `feat/android-weather-wallpaper-baseline`
 - Pull request: #1
-- Last fully green exact head before final review fixes: `e0ec4afb7acd82acb7d14c95ae38e5f658dc3ce8`
-- Last green Actions run before final review fixes: #11
+- Last fully green implementation head: `99b801f08c92113cf398d9198d33415239094c70`
+- Last green Actions run: #19
 
 ## Next step
-Wait for exact-head CI after the hourly-day/night and backup-privacy fixes. If unit tests, APK assembly, and artifact upload all pass, mark PR #1 ready, merge it, verify post-merge `main` CI, download the resulting APK artifact, and move immediately into real-device validation.
+Let the documentation-only final head CI pass, mark PR #1 ready, merge it, verify post-merge `main` CI, download the resulting APK artifact, and move immediately into real-device validation.
