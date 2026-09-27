@@ -962,6 +962,65 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun metricValue(initial: String): TextView =
+        TextView(this).apply {
+            text = initial
+            textSize = 13.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.START
+            maxLines = 2
+            includeFontPadding = false
+        }
+
+    private fun metricCell(
+        label: String,
+        valueView: TextView
+    ): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.START
+            setPadding(dp(4), 0, dp(4), 0)
+
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = label
+                    textSize = 10.5f
+                    setTextColor(COLOR_MUTED)
+                    includeFontPadding = false
+                },
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+
+            addView(
+                valueView,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = dp(2)
+                }
+            )
+        }
+
+    private fun gradientBackground(
+        colors: IntArray,
+        radiusDp: Int,
+        strokeColor: Int? = null
+    ): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            colors
+        ).apply {
+            cornerRadius = dp(radiusDp).toFloat()
+            if (strokeColor != null && strokeColor != Color.TRANSPARENT) {
+                setStroke(dp(1), strokeColor)
+            }
+        }
+
     private fun premiumButton(
         label: String,
         primary: Boolean,
@@ -972,18 +1031,25 @@ class MainActivity : Activity() {
             textSize = 14f
             isAllCaps = false
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(
+            setTextColor(Color.WHITE)
+            background =
                 if (primary) {
-                    Color.rgb(4, 18, 32)
+                    gradientBackground(
+                        intArrayOf(
+                            Color.rgb(25, 199, 255),
+                            Color.rgb(20, 119, 245),
+                            Color.rgb(141, 82, 255)
+                        ),
+                        20,
+                        Color.rgb(109, 222, 255)
+                    )
                 } else {
-                    Color.WHITE
+                    roundedBackground(
+                        COLOR_BUTTON_BG,
+                        18,
+                        COLOR_STROKE
+                    )
                 }
-            )
-            background = roundedBackground(
-                if (primary) COLOR_PRIMARY else COLOR_BUTTON_BG,
-                18,
-                if (primary) COLOR_PRIMARY else COLOR_STROKE
-            )
             stateListAnimator = null
             minHeight = 0
             minWidth = 0
