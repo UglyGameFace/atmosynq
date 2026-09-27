@@ -870,7 +870,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = Color.TRANSPARENT
+            setBackgroundColor(Color.TRANSPARENT)
 
             addView(
                 TextView(this@MainActivity).apply {
