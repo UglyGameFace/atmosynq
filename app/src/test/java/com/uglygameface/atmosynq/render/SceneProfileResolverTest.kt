@@ -26,7 +26,7 @@ class SceneProfileResolverTest {
 
         assertEquals(SettlementKind.TOWN, profile.settlement)
         assertEquals(TerrainKind.FLAT, profile.terrain)
-        assertEquals(LatitudeBand.WARM, profile.latitudeBand)
+        assertEquals(LatitudeBand.TEMPERATE, profile.latitudeBand)
     }
 
     @Test
@@ -48,7 +48,7 @@ class SceneProfileResolverTest {
 
         assertEquals(SettlementKind.METRO, profile.settlement)
         assertEquals(TerrainKind.FLAT, profile.terrain)
-        assertEquals(LatitudeBand.TEMPERATE, profile.latitudeBand)
+        assertEquals(LatitudeBand.WARM, profile.latitudeBand)
     }
 
     @Test
