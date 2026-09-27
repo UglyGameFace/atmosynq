@@ -1,6 +1,9 @@
 package com.uglygameface.atmosynq
 
 import android.Manifest
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
@@ -21,6 +24,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
@@ -65,6 +69,8 @@ class MainActivity : Activity() {
     private lateinit var dailyContainer: LinearLayout
     private lateinit var locationButton: Button
     private lateinit var wallpaperButton: Button
+    private lateinit var brandLogo: ImageView
+    private var brandAnimator: AnimatorSet? = null
     private lateinit var widgetButton: Button
     private lateinit var animatedTab: TextView
     private lateinit var staticTab: TextView
@@ -90,6 +96,12 @@ class MainActivity : Activity() {
         if (::animatedTab.isInitialized) applyMotionMode()
     }
 
+    override fun onPause() {
+        brandAnimator?.cancel()
+        brandAnimator = null
+        super.onPause()
+    }
+
     private fun buildUi(): ScrollView {
         val scroll = ScrollView(this).apply {
             isFillViewport = true
@@ -112,29 +124,20 @@ class MainActivity : Activity() {
             )
         )
 
-        val brandChip = ImageView(this).apply {
+        brandLogo = ImageView(this).apply {
             setImageResource(R.drawable.atmosynq_logo)
             scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
             contentDescription = "Atmosynq"
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-            background = gradientBackground(
-                intArrayOf(
-                    Color.rgb(6, 27, 52),
-                    Color.rgb(12, 50, 83),
-                    Color.rgb(22, 34, 72)
-                ),
-                24,
-                COLOR_BRAND_STROKE
-            )
         }
         content.addView(
-            brandChip,
+            brandLogo,
             LinearLayout.LayoutParams(
-                dp(190),
-                dp(58)
+                dp(112),
+                dp(112)
             ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = dp(4)
+                bottomMargin = dp(2)
             }
         )
 
@@ -482,6 +485,59 @@ class MainActivity : Activity() {
 
         if (::heroScene.isInitialized) {
             heroScene.setAnimated(animated)
+        }
+
+        brandAnimator?.cancel()
+        brandAnimator = null
+
+        if (::brandLogo.isInitialized) {
+            brandLogo.translationY = 0f
+            brandLogo.scaleX = 1f
+            brandLogo.scaleY = 1f
+            brandLogo.alpha = 1f
+
+            if (animated) {
+                val lift = ObjectAnimator.ofFloat(
+                    brandLogo,
+                    View.TRANSLATION_Y,
+                    0f,
+                    -dp(3).toFloat(),
+                    0f
+                )
+                val scaleX = ObjectAnimator.ofFloat(
+                    brandLogo,
+                    View.SCALE_X,
+                    1f,
+                    1.025f,
+                    1f
+                )
+                val scaleY = ObjectAnimator.ofFloat(
+                    brandLogo,
+                    View.SCALE_Y,
+                    1f,
+                    1.025f,
+                    1f
+                )
+                val glow = ObjectAnimator.ofFloat(
+                    brandLogo,
+                    View.ALPHA,
+                    0.92f,
+                    1f,
+                    0.92f
+                )
+
+                listOf(lift, scaleX, scaleY, glow).forEach { animator ->
+                    animator.repeatCount = ValueAnimator.INFINITE
+                    animator.repeatMode = ValueAnimator.RESTART
+                }
+
+                brandAnimator = AnimatorSet().apply {
+                    playTogether(lift, scaleX, scaleY, glow)
+                    duration = 4200L
+                    interpolator = AccelerateDecelerateInterpolator()
+                    start()
+                }
+            }
         }
     }
 
