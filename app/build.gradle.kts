@@ -5,6 +5,7 @@ plugins {
 android {
     namespace = "com.uglygameface.atmosynq"
     compileSdk = 37
+    compileSdkMinor = 0
 
     defaultConfig {
         applicationId = "com.uglygameface.atmosynq"
