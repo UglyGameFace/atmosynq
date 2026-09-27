@@ -131,8 +131,20 @@ The generator must still emit a GLB larger than 500 KB and contain required prod
 - old saved-location compatibility
 - Filament fallback
 
-## Exact-head CI gate
-The final v0.5.1 head must pass:
+## Exact-head CI status
+Exact v0.5.1 head: `5451de9f91d30633b143984b3257f1f9198fec53`
+
+Android CI run #121 passed:
+- production scene generation: success
+- unit/regression tests: success
+- Kotlin compilation: success
+- Android resource processing: success
+- debug APK assembly: success
+- artifact upload: success
+
+Generated production GLB in CI: 1,325,312 bytes / 279 geometries.
+
+The final v0.5.1 head passed:
 - production scene generation
 - global geocoder tests
 - location scene / terrain tests
@@ -167,4 +179,4 @@ The final v0.5.1 head must pass:
 PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green v0.5.1 APK passes the Samsung gate.
 
 ## Next step
-Run exact-head CI on v0.5.1. Root-cause any failing build/test from the actual logs. If green, install that exact APK and compare against both the approved mockup and the v0.5.0 device screenshots.
+Install the exact green v0.5.1 APK from CI run #121 on the Samsung. Compare it against both the approved mockup and the v0.5.0 device screenshots, with special attention to the radioactive bloom, cloud geometry, unsynced color split, house repetition, hero readability and compactness.
