@@ -41,7 +41,7 @@ import com.uglygameface.atmosynq.weather.OpenMeteoClient
 import com.uglygameface.atmosynq.weather.WeatherCode
 import com.uglygameface.atmosynq.weather.WeatherReport
 import com.uglygameface.atmosynq.widget.AtmosynqWidgetProvider
-import com.uglygameface.atmosynq.render.WeatherHeroView
+import com.uglygameface.atmosynq.render.FilamentWeatherHeroView
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -74,7 +74,7 @@ class MainActivity : Activity() {
     private lateinit var widgetButton: Button
     private lateinit var animatedTab: TextView
     private lateinit var staticTab: TextView
-    private lateinit var heroScene: WeatherHeroView
+    private lateinit var heroScene: FilamentWeatherHeroView
 
     private val locationStore by lazy { LocationStore(this) }
     private val motionStore by lazy { MotionPreferenceStore(this) }
@@ -183,7 +183,7 @@ class MainActivity : Activity() {
             clipToOutline = true
         }
 
-        heroScene = WeatherHeroView(this).apply {
+        heroScene = FilamentWeatherHeroView(this).apply {
             contentDescription = "Current Atmosynq weather scene"
             setAnimated(motionStore.isAnimated())
         }

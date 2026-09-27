@@ -26,17 +26,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK 36
+      - name: Install Android SDK 37
         shell: bash
         run: |
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
           SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
-          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '9.3.1'
 
       - name: Unit tests
         run: gradle :app:testDebugUnitTest --stacktrace

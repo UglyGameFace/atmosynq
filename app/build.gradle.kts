@@ -1,20 +1,18 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
 }
 
 android {
     namespace = "com.uglygameface.atmosynq"
-    compileSdk = 36
+    compileSdk = 37
+    compileSdkMinor = 0
 
     defaultConfig {
         applicationId = "com.uglygameface.atmosynq"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.3.1"
+        versionCode = 8
+        versionName = "0.4.0"
     }
 
     compileOptions {
@@ -29,13 +27,12 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
-    }
-}
 
 dependencies {
+    implementation("com.google.android.filament:filament-android:1.77.0")
+    implementation("com.google.android.filament:gltfio-android:1.77.0")
+    implementation("com.google.android.filament:filament-utils-android:1.77.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
 }
