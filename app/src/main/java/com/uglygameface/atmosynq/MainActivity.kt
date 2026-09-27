@@ -22,6 +22,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.HorizontalScrollView
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Space
@@ -77,7 +78,7 @@ class MainActivity : Activity() {
         }
         scroll.addView(
             content,
-            ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         )
 
         content.addView(TextView(this).apply {
@@ -158,7 +159,7 @@ class MainActivity : Activity() {
             isHorizontalScrollBarEnabled = false
             addView(
                 hourlyContainer,
-                HorizontalScrollView.LayoutParams(
+                FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
