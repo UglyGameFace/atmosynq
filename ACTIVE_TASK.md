@@ -3,8 +3,11 @@
 ## Active task / outcome
 Ship Atmosynq v0.3.0 as a real weather-first UI reset based on the approved premium dashboard mockup, without faking unsupported surfaces or replacing the app with a screenshot.
 
-## Current branch
-`feat/v0.3.0-premium-dashboard`
+## Current state
+PR #9 — `v0.3.0: premium weather-first dashboard reset` — is merged into `main`.
+
+Merged functional SHA:
+`af23a9c54841849817640ee3b8c562a63a7b742d`
 
 ## Baseline
 - current production/main before this branch: `c41bb5de705e044b551dcb047e06d623fd80f337`
@@ -78,17 +81,12 @@ This is intentionally not advertised as photo-real scenery. The public repo does
 - versionCode: 6
 - versionName: 0.3.0
 
-## Validation gate
-Open a fresh PR to `main`.
+## Validation
+PR exact head `267fe7db45bc2732f3020ae1fad60726ca4021d6` passed Actions run #48: resource linking, Kotlin compilation, unit tests, debug APK assembly, and artifact upload all passed.
 
-Exact-head CI must pass:
-- Android resource linking
-- Kotlin compilation
-- all unit tests
-- debug APK assembly
-- artifact upload
+PR #9 then merged to `main` as `af23a9c54841849817640ee3b8c562a63a7b742d`.
 
-Do not merge until exact-head CI is green.
+Post-merge main Actions run #49 passed the functional build steps and uploaded the exact APK artifact.
 
 ## Real-device validation after build
 1. compact brand chip visibly shows vortex + Atmosynq
@@ -107,5 +105,13 @@ Do not merge until exact-head CI is green.
 ## Known boundary
 The public repo intentionally does not bundle third-party/copyrighted wallpaper video. The live wallpaper still falls back to its procedural renderer unless an original/licensed private `scene_neutral.mp4` is supplied.
 
+## Validated APK
+- versionName: 0.3.0
+- versionCode: 6
+- source main SHA: `af23a9c54841849817640ee3b8c562a63a7b742d`
+- artifact: `atmosynq-debug-apk`
+- APK size: 1,004,422 bytes
+- APK SHA-256: `77369d0249d21e7a5fd81c46d8bcd9a697130a00046d3284652e4ea7c4916f29`
+
 ## Next step
-Run exact-head Android CI for v0.3.0, repair any real build failures, merge only when green, verify post-merge main CI, then provide the exact v0.3.0 APK for device testing.
+Install the exact v0.3.0 APK on the Android device and judge the real UI against the approved mockup: logo visibility, hero depth, action hierarchy, forecast surfaces, Animated/Static motion, clipping, heat, and smoothness. Root-cause observed device issues before starting Apple work.
