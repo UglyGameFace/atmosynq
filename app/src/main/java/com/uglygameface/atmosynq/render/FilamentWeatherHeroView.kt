@@ -290,7 +290,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             val instance = tm.getInstance(entity)
             if (instance == 0) return@forEach
 
-            baseTransforms[name] = tm.getTransform(instance, null).copyOf()
+            baseTransforms[name] = tm.getTransform(instance, FloatArray(16)).copyOf()
         }
     }
 
