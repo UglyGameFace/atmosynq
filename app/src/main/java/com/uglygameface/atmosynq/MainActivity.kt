@@ -191,7 +191,11 @@ class MainActivity : Activity() {
         content.addView(Space(this), LinearLayout.LayoutParams(1, dp(10)))
 
         wallpaperButton = Button(this).apply {
-            text = "Preview & set live wallpaper"
+            text = if (Build.VERSION.SDK_INT >= 36) {
+                "Set home / lock live wallpaper"
+            } else {
+                "Preview & set live wallpaper"
+            }
             setOnClickListener { openWallpaperPicker() }
         }
         content.addView(wallpaperButton, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54)))
