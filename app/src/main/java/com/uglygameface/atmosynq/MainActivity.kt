@@ -52,7 +52,13 @@ class MainActivity : Activity() {
     private lateinit var currentTemperature: TextView
     private lateinit var currentCondition: TextView
     private lateinit var currentHighLow: TextView
-    private lateinit var currentDetails: TextView
+    private lateinit var heroLocation: TextView
+    private lateinit var metricFeels: TextView
+    private lateinit var metricHumidity: TextView
+    private lateinit var metricWind: TextView
+    private lateinit var metricVisibility: TextView
+    private lateinit var metricPrecipitation: TextView
+    private lateinit var metricSun: TextView
     private lateinit var hourlySection: LinearLayout
     private lateinit var hourlyContainer: LinearLayout
     private lateinit var dailySection: LinearLayout
