@@ -7,7 +7,6 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -17,7 +16,6 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
-import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
@@ -39,7 +37,7 @@ import com.uglygameface.atmosynq.weather.OpenMeteoClient
 import com.uglygameface.atmosynq.weather.WeatherCode
 import com.uglygameface.atmosynq.weather.WeatherReport
 import com.uglygameface.atmosynq.widget.AtmosynqWidgetProvider
-import com.uglygameface.atmosynq.widget.WeatherWidgetSceneRenderer
+import com.uglygameface.atmosynq.render.WeatherHeroView
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -64,28 +62,15 @@ class MainActivity : Activity() {
     private lateinit var widgetButton: Button
     private lateinit var animatedTab: TextView
     private lateinit var staticTab: TextView
-    private lateinit var heroScene: ImageView
+    private lateinit var heroScene: WeatherHeroView
 
     private val locationStore by lazy { LocationStore(this) }
     private val motionStore by lazy { MotionPreferenceStore(this) }
     private val callbackUsed = AtomicBoolean(false)
-    private val heroHandler = Handler(Looper.getMainLooper())
-
-    private var heroFrames: List<Bitmap> = emptyList()
-    private var heroFrameIndex = 0
     private var activeReport: WeatherReport? = null
 
     private val usesUsUnits: Boolean
         get() = Locale.getDefault().country.equals("US", ignoreCase = true)
-
-    private val heroRunnable = object : Runnable {
-        override fun run() {
-            if (!motionStore.isAnimated() || heroFrames.size < 2 || isFinishing || isDestroyed) return
-            heroFrameIndex = (heroFrameIndex + 1) % heroFrames.size
-            showHeroFrame(heroFrameIndex, animate = true)
-            heroHandler.postDelayed(this, HERO_FRAME_MS)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,17 +82,6 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::animatedTab.isInitialized) applyMotionMode()
-    }
-
-    override fun onPause() {
-        heroHandler.removeCallbacks(heroRunnable)
-        super.onPause()
-    }
-
-    override fun onDestroy() {
-        heroHandler.removeCallbacks(heroRunnable)
-        recycleHeroFrames()
-        super.onDestroy()
     }
 
     private fun buildUi(): ScrollView {
@@ -132,14 +106,54 @@ class MainActivity : Activity() {
             )
         )
 
-        content.addView(
+        val brandTile = FrameLayout(this).apply {
+            background = roundedBackground(Color.rgb(5, 18, 34), 24, Color.rgb(37, 116, 174))
+            clipToOutline = true
+            contentDescription = "Atmosynq"
+        }
+        brandTile.addView(
             ImageView(this).apply {
-                setImageResource(R.drawable.atmosynq_logo)
-                contentDescription = "Atmosynq"
-                scaleType = ImageView.ScaleType.FIT_CENTER
+                setImageResource(R.mipmap.ic_launcher)
+                scaleType = ImageView.ScaleType.CENTER_CROP
             },
-            LinearLayout.LayoutParams(dp(112), dp(112)).apply {
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+        brandTile.addView(
+            View(this).apply {
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.TRANSPARENT, Color.argb(220, 3, 10, 20))
+                )
+            },
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(42),
+                Gravity.BOTTOM
+            )
+        )
+        brandTile.addView(
+            TextView(this).apply {
+                text = "Atmosynq"
+                textSize = 13.5f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+            },
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(34),
+                Gravity.BOTTOM
+            )
+        )
+        content.addView(
+            brandTile,
+            LinearLayout.LayoutParams(dp(104), dp(104)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(4)
             }
         )
 
@@ -185,11 +199,9 @@ class MainActivity : Activity() {
             clipToOutline = true
         }
 
-        heroScene = ImageView(this).apply {
-            setImageResource(R.drawable.atmosynq_logo)
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            alpha = 0.55f
+        heroScene = WeatherHeroView(this).apply {
             contentDescription = "Current Atmosynq weather scene"
+            setAnimated(motionStore.isAnimated())
         }
         currentCard.addView(
             heroScene,
@@ -390,10 +402,7 @@ class MainActivity : Activity() {
             wallpaperButton.isEnabled = false
             wallpaperButton.alpha = 0.42f
             activeReport = null
-            recycleHeroFrames()
-            heroScene.setImageResource(R.drawable.atmosynq_logo)
-            heroScene.scaleType = ImageView.ScaleType.CENTER_CROP
-            heroScene.alpha = 0.55f
+            heroScene.setWeather(null)
         } else {
             status.text = "Refreshing local weather…"
             wallpaperButton.isEnabled = true
@@ -420,52 +429,9 @@ class MainActivity : Activity() {
         styleMotionTab(animatedTab, active = animated)
         styleMotionTab(staticTab, active = !animated)
 
-        heroHandler.removeCallbacks(heroRunnable)
-        if (heroFrames.isEmpty()) return
-
-        if (animated) {
-            heroFrameIndex %= heroFrames.size
-            showHeroFrame(heroFrameIndex, animate = false)
-            heroHandler.postDelayed(heroRunnable, HERO_FRAME_MS)
-        } else {
-            val weatherCode = activeReport?.current?.weatherCode ?: -1
-            val staticIndex = if (weatherCode in THUNDER_CODES) 1 else 0
-            heroFrameIndex = staticIndex.coerceAtMost(heroFrames.lastIndex)
-            showHeroFrame(heroFrameIndex, animate = false)
+        if (::heroScene.isInitialized) {
+            heroScene.setAnimated(animated)
         }
-    }
-
-    private fun showHeroFrame(index: Int, animate: Boolean) {
-        if (heroFrames.isEmpty() || !::heroScene.isInitialized) return
-        val safeIndex = index.coerceIn(0, heroFrames.lastIndex)
-
-        heroScene.animate().cancel()
-        heroScene.scaleType = ImageView.ScaleType.CENTER_CROP
-        heroScene.setImageBitmap(heroFrames[safeIndex])
-
-        if (animate) {
-            heroScene.alpha = 0.74f
-            heroScene.animate()
-                .alpha(1f)
-                .setDuration(260L)
-                .start()
-        } else {
-            heroScene.alpha = 1f
-        }
-    }
-
-    private fun replaceHeroFrames(frames: List<Bitmap>) {
-        recycleHeroFrames()
-        heroFrames = frames
-        heroFrameIndex = 0
-    }
-
-    private fun recycleHeroFrames() {
-        heroFrames.forEach { bitmap ->
-            if (!bitmap.isRecycled) bitmap.recycle()
-        }
-        heroFrames = emptyList()
-        heroFrameIndex = 0
     }
 
     private fun requestOrCaptureLocation() {
@@ -604,21 +570,14 @@ class MainActivity : Activity() {
 
         Thread {
             val result = runCatching {
-                val report = OpenMeteoClient().fetchReport(latitude, longitude)
-                val frames = (0..2).map { frameIndex ->
-                    WeatherWidgetSceneRenderer.renderHero(
-                        report.current,
-                        frameIndex
-                    )
-                }
-                report to frames
+                OpenMeteoClient().fetchReport(latitude, longitude)
             }
 
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
 
-                result.onSuccess { pair ->
-                    renderWeather(pair.first, pair.second)
+                result.onSuccess { report ->
+                    renderWeather(report)
                 }.onFailure {
                     status.text = "Weather refresh failed • tap location to retry"
                 }
@@ -630,11 +589,10 @@ class MainActivity : Activity() {
     }
 
     private fun renderWeather(
-        report: WeatherReport,
-        frames: List<Bitmap>
+        report: WeatherReport
     ) {
         activeReport = report
-        replaceHeroFrames(frames)
+        heroScene.setWeather(report.current)
 
         val current = report.current
         val today = report.daily.firstOrNull()
@@ -1120,8 +1078,6 @@ class MainActivity : Activity() {
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 420
-        private const val HERO_FRAME_MS = 1350L
-
         private val THUNDER_CODES = setOf(95, 96, 97, 99)
 
         private val COLOR_BG_TOP = Color.rgb(7, 24, 43)

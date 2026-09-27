@@ -1,116 +1,69 @@
 # Active Task
 
 ## Active task / outcome
-Real-device validation of merged Atmosynq v0.2.1 after replacing the rejected split branding/UI with the approved integrated phone-safe logo and weather-first dashboard.
+Repair the two real-device regressions found in Atmosynq v0.2.1: the dashboard logo is invisible and the app weather hero looks like a skipping slideshow.
 
-## Current production source
-Repository:
-`UglyGameFace/atmosynq`
+## Root cause from real-device test
+1. The dashboard reserves space for the integrated logo resource, but that resource is not visibly rendering on-device in the header.
+2. The app hero is intentionally swapping three pre-rendered weather bitmaps every 1.35 seconds, so Animated mode literally behaves like a slideshow.
 
-Merged PR:
-#5 — Use integrated Atmosynq logo and weather-first dashboard
-
-Functional merged main SHA:
-`f5fb3fe26fb1a9ef151e553a3b2e61ed14930c7e`
-
-PR exact head:
-`cbaccebc899987d367cfcb81edeea3f5f5c69c74`
-
-PR CI:
-Actions run #39 passed.
-
-Post-merge main CI:
-Actions run #40 passed:
-- Android resource linking
-- Kotlin compilation
-- unit tests
-- debug APK assembly
-- APK artifact upload
+## Repair branch
+`fix/v0.2.2-smooth-hero-clean`
 
 ## Version
-- versionCode: 4
-- versionName: 0.2.1
+- versionCode: 5
+- versionName: 0.2.2
 
-## Locked brand rule
-Use this single integrated Atmosynq logo from now on:
-- cyan/blue/violet atmospheric vortex
-- **Atmosynq name inside the logo**
-- no separate external wordmark
-- phone-safe composition
+## Fixes now implemented
+- replaced the invisible header resource path with a phone-safe composed Atmosynq tile using the launcher artwork known to render on-device
+- keeps the **Atmosynq name inside the logo tile**, not as a detached outside wordmark
+- removed the app hero's three-bitmap slideshow loop entirely
+- added `WeatherHeroView`, a real continuously drawn Canvas weather surface
+- Animated mode now moves clouds continuously, moves rain continuously, drifts snow/fog, softly pulses sun/moon glow, and flashes lightning on a continuous timeline
+- Static mode uses the same weather scene but does not schedule continuous redraws
+- dashboard hero now receives the live `WeatherSnapshot` directly instead of generating three bitmap frames
+- widget animation remains separate because Android widgets are constrained to RemoteViews-compatible motion
 
-The obsolete split `atmosynq_mark.webp` and `atmosynq_wordmark.webp` assets are removed.
+## Brand rule
+Use one integrated phone-safe Atmosynq logo treatment:
+- luminous vortex
+- Atmosynq name inside the tile
+- no detached wordmark under or beside it
 
-## Merged UI changes
-- integrated logo used for launcher icon
-- phone-safe adaptive icon wrapper
-- integrated round icon
-- integrated splash branding
-- integrated app header
-- integrated widget badge and widget-picker branding
-- compact brand area instead of oversized split logo treatment
-- weather-first dashboard
-- high-resolution current-weather hero scene
-- Animated / Static segmented control
-- compact rounded primary/secondary actions
-- hourly + 7-day forecasts retained
-- darker cyan/navy visual system
+## Validation gate
+Open a new repair PR to `main`.
 
-## Motion behavior
-Animated:
-- high-resolution app hero cycles weather scene frames with short fades
-- widget continues its supported ViewFlipper weather animation
-- live wallpaper keeps full motion
+Before merge, exact-head CI must pass:
+- Android resource linking
+- Kotlin compilation
+- all unit tests
+- debug APK assembly
+- artifact upload
 
-Static:
-- app hero freezes on a representative weather scene
-- widget remains still
-- live wallpaper freezes motion while retaining weather styling
+Then verify post-merge `main` CI and install that exact v0.2.2 APK.
 
-The logo itself no longer bobs/pulses. Motion belongs to the weather experience.
-
-## Latest validated APK
-Source SHA:
-`f5fb3fe26fb1a9ef151e553a3b2e61ed14930c7e`
-
-Actions run:
-#40
-
-Artifact:
-`atmosynq-debug-apk`
-
-APK size:
-997,042 bytes
-
-APK SHA-256:
-`ac59325971eb087dde9f5cff8057ac35854b6a698032a2737ac68a2d72a6f220`
-
-## Real-device validation now
-Install the exact v0.2.1 APK and verify:
-
-1. integrated logo is readable and not cropped by Smart Launcher / Samsung masks
-2. Atmosynq name is inside the icon and no duplicate external wordmark appears
-3. splash is centered and not awkwardly cropped
-4. app header is compact
-5. current-weather hero visually dominates the dashboard
-6. hero scene matches real local conditions
-7. Animated hero moves cleanly without looking like a slideshow
-8. Static hero stays completely still
-9. segmented Animated / Static control is visually clear
-10. action buttons no longer resemble default gray Android buttons
-11. hourly and 7-day forecast remain readable
-12. widget uses the integrated logo cleanly
-13. widget Animated / Static behavior still works
-14. live wallpaper Animated / Static behavior still works
-15. home / lock / both wallpaper behavior remains intact
-16. no clipping, crash, heat, or obvious battery regression
+## Device validation after CI
+1. logo is visibly present at the top
+2. Atmosynq name is inside the logo tile
+3. logo is compact and phone-safe
+4. weather hero no longer jumps between discrete frames
+5. clouds move smoothly
+6. rain/snow/fog move smoothly when active
+7. clear weather has subtle continuous motion
+8. thunder lightning is brief and not constant
+9. Static mode stops app hero motion
+10. widget behavior remains intact
+11. wallpaper behavior remains intact
+12. no heat/crash regression
 
 ## Existing boundary
-The public repository does not distribute the supplied third-party/copyrighted scene video. Without an original/licensed private `scene_neutral.mp4`, the wallpaper uses the procedural fallback.
+The public repo still does not ship third-party/copyrighted scene video. The live wallpaper uses the procedural fallback unless an original/licensed private scene is provided.
 
-## Backlog after this device gate
-- Xiaomi/rear-display Weather Portal
-- Apple SwiftUI / WidgetKit / ActivityKit target
-- richer original/licensed scene library
+## PR
+PR #8 — v0.2.2: restore logo and smooth live weather hero
+
+## Current validation
+PR #8 is open from the clean main-based repair branch. Exact-head CI is the current gate.
 
 ## Next step
-Install and visually validate the exact v0.2.1 APK from post-merge run #40. Use screenshots or screen recording from the device to root-cause any remaining visual issue before starting the next platform feature.
+Run exact-head Android CI on the v0.2.2 repair, fix only real failures, merge when green, verify main, then provide the exact APK for device testing.
