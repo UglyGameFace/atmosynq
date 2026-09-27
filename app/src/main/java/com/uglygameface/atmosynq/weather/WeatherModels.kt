@@ -18,12 +18,16 @@ data class WeatherSnapshot(
     val windGustKmh: Double,
     val visibilityM: Double,
     val sunriseIsoLocal: String?,
-    val sunsetIsoLocal: String?
+    val sunsetIsoLocal: String?,
+    val apparentTemperatureC: Double = temperatureC,
+    val relativeHumidityPct: Double = 0.0
 ) {
     fun toJson(): String = JSONObject().apply {
         put("fetchedAtEpochMs", fetchedAtEpochMs)
         put("timezone", timezone)
         put("temperatureC", temperatureC)
+        put("apparentTemperatureC", apparentTemperatureC)
+        put("relativeHumidityPct", relativeHumidityPct)
         put("isDay", isDay)
         put("precipitationMm", precipitationMm)
         put("rainMm", rainMm)
@@ -42,10 +46,13 @@ data class WeatherSnapshot(
     companion object {
         fun fromJson(raw: String): WeatherSnapshot? = runCatching {
             val j = JSONObject(raw)
+            val temperature = j.optDouble("temperatureC", 0.0)
             WeatherSnapshot(
                 fetchedAtEpochMs = j.getLong("fetchedAtEpochMs"),
                 timezone = j.optString("timezone", "UTC"),
-                temperatureC = j.optDouble("temperatureC", 0.0),
+                temperatureC = temperature,
+                apparentTemperatureC = j.optDouble("apparentTemperatureC", temperature),
+                relativeHumidityPct = j.optDouble("relativeHumidityPct", 0.0),
                 isDay = j.optBoolean("isDay", false),
                 precipitationMm = j.optDouble("precipitationMm", 0.0),
                 rainMm = j.optDouble("rainMm", 0.0),
@@ -63,6 +70,31 @@ data class WeatherSnapshot(
         }.getOrNull()
     }
 }
+
+data class HourlyForecast(
+    val timeIsoLocal: String,
+    val temperatureC: Double,
+    val apparentTemperatureC: Double,
+    val precipitationProbabilityPct: Int,
+    val weatherCode: Int,
+    val windSpeedKmh: Double
+)
+
+data class DailyForecast(
+    val dateIso: String,
+    val weatherCode: Int,
+    val highC: Double,
+    val lowC: Double,
+    val precipitationProbabilityPct: Int,
+    val sunriseIsoLocal: String?,
+    val sunsetIsoLocal: String?
+)
+
+data class WeatherReport(
+    val current: WeatherSnapshot,
+    val hourly: List<HourlyForecast>,
+    val daily: List<DailyForecast>
+)
 
 data class WeatherVisualState(
     val daylight: Float,
