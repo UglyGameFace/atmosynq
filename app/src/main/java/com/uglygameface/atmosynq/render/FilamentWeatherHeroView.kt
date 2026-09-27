@@ -125,14 +125,14 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         Choreographer.getInstance().removeFrameCallback(frameCallback)
         framePosted = false
 
-        val oldViewer = viewer
+        // ModelViewer owns a detach listener on its TextureView and destroys its
+        // Filament resources there. Clear our references only, otherwise we risk
+        // destroying the same native objects twice.
         viewer = null
         skybox = null
         indirectLight = null
         baseTransforms.clear()
         filamentReady = false
-
-        runCatching { oldViewer?.destroy() }
 
         super.onDetachedFromWindow()
     }
