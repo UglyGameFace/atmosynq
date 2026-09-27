@@ -9,6 +9,7 @@ import android.view.TextureView
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.FrameLayout
+import com.google.android.filament.ColorGrading
 import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.Skybox
@@ -35,8 +36,10 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private var viewer: ModelViewer? = null
     private var skybox: Skybox? = null
     private var indirectLight: IndirectLight? = null
+    private var colorGrading: ColorGrading? = null
     private var snapshot: WeatherSnapshot? = null
     private var sceneProfile: SceneProfile = SceneProfile.DEFAULT
+    private var locationResolved = false
 
     private var animated = true
     private var attached = false
@@ -151,9 +154,13 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
     fun setSceneProfile(profile: SceneProfile) {
         sceneProfile = profile
+        locationResolved = true
         fallback.setSceneProfile(profile)
         fxOverlay.setSceneProfile(profile)
-        viewer?.let { applySceneProfile(it) }
+        viewer?.let {
+            applySceneProfile(it)
+            applyWeatherSceneState(it)
+        }
         requestRender()
     }
 
@@ -162,6 +169,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         fallback.setWeather(snapshot)
         fxOverlay.setWeather(snapshot)
         viewer?.let {
+            applyWeatherSceneState(it)
             applyWeatherLighting(it)
             applyCameraPose(it, 0f)
         }
@@ -283,6 +291,15 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         Choreographer.getInstance().removeFrameCallback(frameCallback)
         framePosted = false
 
+        // ColorGrading is ours, unlike the model resources owned by ModelViewer.
+        val activeViewer = viewer
+        colorGrading?.let { grading ->
+            runCatching {
+                activeViewer?.engine?.destroy(grading)
+            }
+        }
+        colorGrading = null
+
         // ModelViewer owns a detach listener on its TextureView and destroys its
         // Filament resources there. Clear our references only, otherwise we risk
         // destroying the same native objects twice.
@@ -312,6 +329,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             configureCamera(v)
             captureTrackedTransforms(v)
             applySceneProfile(v)
+            applyWeatherSceneState(v)
             applyWeatherLighting(v)
 
             v
@@ -388,14 +406,14 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         view.bloomOptions =
             view.bloomOptions.apply {
                 enabled = true
-                strength = 0.11f
+                strength = 0.040f
                 resolution = 480
                 levels = 7
                 quality = FilamentView.QualityLevel.HIGH
-                lensFlare = true
-                starburst = true
-                chromaticAberration = 0.006f
-                ghostCount = 3
+                lensFlare = false
+                starburst = false
+                chromaticAberration = 0.0f
+                ghostCount = 0
             }
 
         view.screenSpaceReflectionsOptions =
@@ -432,17 +450,30 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             .also { v.scene.skybox = it }
 
         indirectLight = IndirectLight.Builder()
-            .intensity(28_000f)
+            .intensity(22_000f)
             .irradiance(
                 1,
                 floatArrayOf(
-                    0.46f,
-                    0.58f,
-                    0.78f
+                    0.40f,
+                    0.48f,
+                    0.62f
                 )
             )
             .build(engine)
             .also { v.scene.indirectLight = it }
+
+        colorGrading =
+            ColorGrading.Builder()
+                .quality(ColorGrading.QualityLevel.ULTRA)
+                .exposure(-0.34f)
+                .whiteBalance(-0.035f, 0.0f)
+                .contrast(1.07f)
+                .vibrance(0.90f)
+                .saturation(0.88f)
+                .luminanceScaling(true)
+                .gamutMapping(true)
+                .build(engine)
+                .also { v.view.colorGrading = it }
     }
 
     private fun loadAtmosynqScene(v: ModelViewer) {
@@ -466,9 +497,9 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         v.cameraNear = 0.08f
         v.cameraFar = 140f
         v.camera.setExposure(
-            5.6f,
-            1.0f / 90.0f,
-            110.0f
+            6.3f,
+            1.0f / 100.0f,
+            80.0f
         )
         applyCameraPose(v, 0f)
     }
@@ -528,7 +559,12 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         val asset = v.asset ?: return
         val tm = v.engine.transformManager
 
-        val mountainScale = sceneProfile.mountainScale
+        val mountainScale =
+            if (locationResolved) {
+                sceneProfile.mountainScale
+            } else {
+                0.0f
+            }
         val rollingScale =
             when (sceneProfile.terrain) {
                 TerrainKind.FLAT -> 0.0f
@@ -538,31 +574,38 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             }
 
         val cityScale =
-            when (sceneProfile.settlement) {
+            if (!locationResolved) {
+                0.0f
+            } else when (sceneProfile.settlement) {
                 SettlementKind.METRO -> 1.0f
                 SettlementKind.CITY -> 0.82f
                 SettlementKind.TOWN -> 0.14f
                 SettlementKind.LOCAL -> 0.0f
             }
         val houseScale =
-            when (sceneProfile.settlement) {
+            if (!locationResolved) {
+                0.0f
+            } else when (sceneProfile.settlement) {
                 SettlementKind.METRO -> 0.16f
                 SettlementKind.CITY -> 0.32f
                 SettlementKind.TOWN -> 1.0f
                 SettlementKind.LOCAL -> 0.72f
             }
         val streetScale =
-            when (sceneProfile.settlement) {
+            if (!locationResolved) {
+                0.0f
+            } else when (sceneProfile.settlement) {
                 SettlementKind.METRO -> 1.0f
                 SettlementKind.CITY -> 1.0f
                 SettlementKind.TOWN -> 0.78f
                 SettlementKind.LOCAL -> 0.38f
             }
 
-        val pineScale: Float
-        val broadleafScale: Float
-        val palmScale: Float
-        when (sceneProfile.latitudeBand) {
+        var pineScale = 0.0f
+        var broadleafScale = 0.0f
+        var palmScale = 0.0f
+        if (locationResolved) {
+            when (sceneProfile.latitudeBand) {
             LatitudeBand.TROPICAL -> {
                 pineScale = 0.0f
                 broadleafScale = 0.58f
@@ -589,6 +632,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 palmScale = 0.0f
             }
         }
+        }
 
         tm.openLocalTransformTransaction()
         try {
@@ -600,6 +644,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             applyEntityGroup(asset, tm, PINE_PARTS, pineScale, 7.0f)
             applyEntityGroup(asset, tm, BROADLEAF_PARTS, broadleafScale, 7.0f)
             applyEntityGroup(asset, tm, PALM_PARTS, palmScale, 7.0f)
+            applyEntityGroup(asset, tm, RIBBONS, 0.0f, 12.0f)
         } finally {
             tm.commitLocalTransformTransaction()
         }
@@ -639,14 +684,62 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         }
     }
 
+    private fun applyWeatherSceneState(v: ModelViewer) {
+        val asset = v.asset ?: return
+        val tm = v.engine.transformManager
+        val weather = snapshot
+
+        val sunScale =
+            if (
+                weather != null &&
+                weather.isDay &&
+                weather.cloudCoverPct < 68.0
+            ) {
+                0.72f
+            } else {
+                0.0f
+            }
+
+        tm.openLocalTransformTransaction()
+        try {
+            applyEntityGroup(
+                asset,
+                tm,
+                listOf("Sun"),
+                sunScale,
+                12.0f
+            )
+            applyEntityGroup(
+                asset,
+                tm,
+                RIBBONS,
+                0.0f,
+                12.0f
+            )
+        } finally {
+            tm.commitLocalTransformTransaction()
+        }
+    }
+
+    private fun cloudVisualScale(): Float {
+        val weather = snapshot ?: return 0.0f
+        val cloud =
+            (weather.cloudCoverPct / 100.0)
+                .coerceIn(0.0, 1.0)
+                .toFloat()
+        return (0.38f + cloud * 0.34f)
+            .coerceIn(0.38f, 0.72f)
+    }
+
     private fun animateScene(v: ModelViewer, seconds: Float) {
         val asset = v.asset ?: return
         val tm = v.engine.transformManager
         val weather = snapshot
 
-        val wind = ((weather?.windSpeedKmh ?: 18.0) / 35.0)
-            .coerceIn(0.20, 2.2)
+        val wind = ((weather?.windSpeedKmh ?: 8.0) / 35.0)
+            .coerceIn(0.12, 1.8)
             .toFloat()
+        val cloudScale = cloudVisualScale()
 
         tm.openLocalTransformTransaction()
         try {
@@ -659,63 +752,47 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 if (instance == 0) return@forEachIndexed
 
                 val matrix = base.copyOf()
+                val visibleScale =
+                    if (cloudScale < 0.02f) {
+                        0.001f
+                    } else {
+                        cloudScale
+                    }
+
+                intArrayOf(
+                    0, 1, 2,
+                    4, 5, 6,
+                    8, 9, 10
+                ).forEach { matrixIndex ->
+                    matrix[matrixIndex] =
+                        base[matrixIndex] * visibleScale
+                }
+
                 matrix[12] =
                     base[12] +
-                    sin(seconds * (0.13f + index * 0.025f) * wind + index) *
-                    (0.75f + index * 0.18f)
+                    sin(
+                        seconds *
+                            (0.07f + index * 0.012f) *
+                            wind +
+                            index
+                    ) *
+                    (0.34f + index * 0.08f)
                 matrix[13] =
-                    base[13] +
-                    sin(seconds * 0.19f + index * 1.7f) *
-                    0.08f
+                    if (cloudScale < 0.02f) {
+                        base[13] - 12.0f
+                    } else {
+                        base[13] +
+                            sin(
+                                seconds * 0.11f +
+                                    index * 1.7f
+                            ) *
+                            0.035f
+                    }
                 tm.setTransform(instance, matrix)
             }
-
-            animateEntity(
-                v,
-                "RibbonCyan",
-                seconds,
-                x = sin(seconds * 0.22f) * 0.28f,
-                y = sin(seconds * 0.31f) * 0.08f
-            )
-            animateEntity(
-                v,
-                "RibbonPurple",
-                seconds,
-                x = cos(seconds * 0.18f) * 0.34f,
-                y = cos(seconds * 0.27f) * 0.07f
-            )
-            animateEntity(
-                v,
-                "Sun",
-                seconds,
-                x = sin(seconds * 0.06f) * 0.12f,
-                y = sin(seconds * 0.11f) * 0.08f
-            )
         } finally {
             tm.commitLocalTransformTransaction()
         }
-    }
-
-    private fun animateEntity(
-        v: ModelViewer,
-        name: String,
-        seconds: Float,
-        x: Float,
-        y: Float
-    ) {
-        val base = baseTransforms[name] ?: return
-        val asset = v.asset ?: return
-        val entity = asset.getFirstEntityByName(name)
-        if (entity == 0) return
-
-        val tm = v.engine.transformManager
-        val instance = tm.getInstance(entity)
-        if (instance == 0) return
-
-        val matrix = base.copyOf()
-        matrix[12] = base[12] + x
-        matrix[13] = base[13] + y
-        tm.setTransform(instance, matrix)
     }
 
     private fun applyWeatherLighting(v: ModelViewer) {
@@ -743,11 +820,11 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         skybox?.setColor(skyR, skyG, skyB, 1f)
 
         val ambient = if (isDay) {
-            38_000f * (1f - cloud * 0.54f)
+            27_000f * (1f - cloud * 0.46f)
         } else {
-            9_500f * (1f - cloud * 0.25f)
+            7_200f * (1f - cloud * 0.22f)
         }
-        indirectLight?.intensity = ambient.coerceAtLeast(4_800f)
+        indirectLight?.intensity = ambient.coerceAtLeast(3_800f)
 
         applyFilamentFog(v, cloud, isDay)
 
@@ -757,8 +834,8 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             val daylight = if (isDay) 1f else 0.16f
             val stormCut = if (thunder) 0.48f else 1f
             val intensity =
-                (105_000f * daylight * stormCut * (1f - cloud * 0.48f))
-                    .coerceAtLeast(if (isDay) 18_000f else 2_600f)
+                (78_000f * daylight * stormCut * (1f - cloud * 0.52f))
+                    .coerceAtLeast(if (isDay) 11_000f else 1_900f)
 
             lightManager.setIntensity(lightInstance, intensity)
             lightManager.setDirection(
@@ -865,7 +942,10 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 listOf(
                     "House$index",
                     "HouseRoof$index",
-                    "HouseWindows$index"
+                    "HouseWindows$index",
+                    "HouseGarage$index",
+                    "HouseDoor$index",
+                    "HouseChimney$index"
                 )
             }
 
@@ -889,16 +969,20 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 listOf("StreetPole$index", "StreetLight$index")
             }
 
-        private val ANIMATED_ENTITIES =
-            CLOUDS + listOf(
+        private val RIBBONS =
+            listOf(
                 "RibbonCyan",
-                "RibbonPurple",
-                "Sun"
+                "RibbonPurple"
             )
+
+        private val ANIMATED_ENTITIES =
+            CLOUDS
 
         private val TRACKED_ENTITIES =
             (
                 ANIMATED_ENTITIES +
+                    RIBBONS +
+                    listOf("Sun") +
                     MOUNTAINS +
                     ROLLING_HILLS +
                     CITY_PARTS +
