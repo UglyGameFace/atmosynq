@@ -1,91 +1,116 @@
 # Active Task
 
 ## Active task / outcome
-Validate Atmosynq v0.2.1 after replacing the rejected split branding/UI with the user-approved integrated phone-safe Atmosynq logo and a weather-first dashboard.
+Real-device validation of merged Atmosynq v0.2.1 after replacing the rejected split branding/UI with the approved integrated phone-safe logo and weather-first dashboard.
 
-## User-approved brand rule
-Use the approved single-piece Atmosynq logo from now on:
-- luminous cyan/blue/violet vortex
-- **Atmosynq name is inside the logo**
-- no separate wordmark outside the logo
-- designed to read cleanly on phones
+## Current production source
+Repository:
+`UglyGameFace/atmosynq`
 
-Old split `atmosynq_mark.webp` + `atmosynq_wordmark.webp` assets are removed.
+Merged PR:
+#5 — Use integrated Atmosynq logo and weather-first dashboard
 
-## Current branch
-`feat/integrated-logo-weather-first-ui`
+Functional merged main SHA:
+`f5fb3fe26fb1a9ef151e553a3b2e61ed14930c7e`
+
+PR exact head:
+`cbaccebc899987d367cfcb81edeea3f5f5c69c74`
+
+PR CI:
+Actions run #39 passed.
+
+Post-merge main CI:
+Actions run #40 passed:
+- Android resource linking
+- Kotlin compilation
+- unit tests
+- debug APK assembly
+- APK artifact upload
 
 ## Version
 - versionCode: 4
 - versionName: 0.2.1
 
-## Implemented on this branch
-- new integrated `atmosynq_logo.webp`
-- legacy launcher icon uses the integrated logo
-- Android adaptive launcher icon uses a safe-zone foreground wrapper
-- round adaptive icon uses the same integrated logo
-- splash screen uses the integrated logo
-- widget badge and widget picker use the integrated logo
-- app header uses one compact integrated logo only
-- removed the old separate wordmark beneath the icon
-- removed the oversized animated logo treatment
-- redesigned Animated / Static as a compact segmented control
-- redesigned the dashboard around a large live weather hero
-- hero uses the same Atmosynq weather scene renderer as the widget
-- Animated hero cycles weather frames
-- Static hero freezes on a representative weather frame
-- clear/day/night/cloud/rain/snow/fog/thunder visuals remain weather-driven
-- compact premium action buttons replace the old giant gray default buttons
-- tighter spacing and darker cyan/navy visual system
-- hourly and 7-day forecast stay below the primary actions
+## Locked brand rule
+Use this single integrated Atmosynq logo from now on:
+- cyan/blue/violet atmospheric vortex
+- **Atmosynq name inside the logo**
+- no separate external wordmark
+- phone-safe composition
+
+The obsolete split `atmosynq_mark.webp` and `atmosynq_wordmark.webp` assets are removed.
+
+## Merged UI changes
+- integrated logo used for launcher icon
+- phone-safe adaptive icon wrapper
+- integrated round icon
+- integrated splash branding
+- integrated app header
+- integrated widget badge and widget-picker branding
+- compact brand area instead of oversized split logo treatment
+- weather-first dashboard
+- high-resolution current-weather hero scene
+- Animated / Static segmented control
+- compact rounded primary/secondary actions
+- hourly + 7-day forecasts retained
+- darker cyan/navy visual system
 
 ## Motion behavior
 Animated:
-- app weather hero cycles scene frames with short fades
-- widget keeps its supported ViewFlipper weather animation
-- live wallpaper keeps its full motion path
+- high-resolution app hero cycles weather scene frames with short fades
+- widget continues its supported ViewFlipper weather animation
+- live wallpaper keeps full motion
 
 Static:
-- app weather hero freezes
+- app hero freezes on a representative weather scene
 - widget remains still
-- live wallpaper freezes motion while retaining the correct weather styling
+- live wallpaper freezes motion while retaining weather styling
 
-The integrated logo itself is intentionally not bobbing/pulsing anymore. Motion belongs to the weather experience, not the brand mark.
+The logo itself no longer bobs/pulses. Motion belongs to the weather experience.
 
-## Validation gate
-Open a PR from `feat/integrated-logo-weather-first-ui` to `main`.
+## Latest validated APK
+Source SHA:
+`f5fb3fe26fb1a9ef151e553a3b2e61ed14930c7e`
 
-Before merge, exact-head CI must pass:
-- Android resource linking
-- Kotlin compilation
-- all unit tests
-- debug APK assembly
-- artifact upload
+Actions run:
+#40
 
-Then verify post-merge `main` CI and install that exact APK on the Android test device.
+Artifact:
+`atmosynq-debug-apk`
 
-## Real-device checks after CI
-1. integrated logo is readable and not cropped on Smart Launcher / Samsung masks
-2. app header is compact and does not dominate the screen
-3. no separate Atmosynq text/wordmark appears below the logo
-4. Animated / Static looks like a segmented control, not a default Android button
-5. current-weather hero is visually dominant
-6. hero scene matches real weather
-7. Animated hero visibly moves without looking like a slideshow
-8. Static hero stays still
-9. actions look consistent and premium
-10. hourly + 7-day sections remain readable
-11. widget uses the integrated logo
-12. splash uses the integrated logo cleanly
-13. wallpaper/widget behavior from prior merged work still passes regression checks
+APK size:
+997,042 bytes
+
+APK SHA-256:
+`ac59325971eb087dde9f5cff8057ac35854b6a698032a2737ac68a2d72a6f220`
+
+## Real-device validation now
+Install the exact v0.2.1 APK and verify:
+
+1. integrated logo is readable and not cropped by Smart Launcher / Samsung masks
+2. Atmosynq name is inside the icon and no duplicate external wordmark appears
+3. splash is centered and not awkwardly cropped
+4. app header is compact
+5. current-weather hero visually dominates the dashboard
+6. hero scene matches real local conditions
+7. Animated hero moves cleanly without looking like a slideshow
+8. Static hero stays completely still
+9. segmented Animated / Static control is visually clear
+10. action buttons no longer resemble default gray Android buttons
+11. hourly and 7-day forecast remain readable
+12. widget uses the integrated logo cleanly
+13. widget Animated / Static behavior still works
+14. live wallpaper Animated / Static behavior still works
+15. home / lock / both wallpaper behavior remains intact
+16. no clipping, crash, heat, or obvious battery regression
 
 ## Existing boundary
-The public repo still does not ship third-party/copyrighted scene video. The live wallpaper uses the procedural fallback unless an original/licensed private scene is provided.
+The public repository does not distribute the supplied third-party/copyrighted scene video. Without an original/licensed private `scene_neutral.mp4`, the wallpaper uses the procedural fallback.
 
-## Backlog after this gate
-- Xiaomi/rear-display Weather Portal work
+## Backlog after this device gate
+- Xiaomi/rear-display Weather Portal
 - Apple SwiftUI / WidgetKit / ActivityKit target
 - richer original/licensed scene library
 
 ## Next step
-Run exact-head CI for this redesign. Fix real build failures only. Merge when green, verify `main`, then provide the exact v0.2.1 APK for device validation.
+Install and visually validate the exact v0.2.1 APK from post-merge run #40. Use screenshots or screen recording from the device to root-cause any remaining visual issue before starting the next platform feature.
