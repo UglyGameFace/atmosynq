@@ -1,116 +1,135 @@
 # Active Task
 
 ## Active task / outcome
-Finish and validate Atmosynq v0.2.0 branding plus app-wide Animated / Static visual modes after the first real-device Android test.
+Validate the merged Atmosynq v0.2.0 official branding and app-wide Animated / Static visual modes on the real Android device, then root-cause any launcher/widget/wallpaper issues before starting the Apple target.
 
-## Real-device evidence
-The merged Android baseline was installed on a Samsung Android device.
+## Current main
+Repository:
+`UglyGameFace/atmosynq`
 
-Confirmed working:
-- Atmosynq launches
-- current/hourly/7-day weather renders
-- launcher widget pin flow opens
-- live-wallpaper preview opens
+Functional main SHA:
+`9fa5df52c499dbeaefcf26e7a3363f4732e443b3`
 
-Observed:
-- the public wallpaper build shows the procedural fallback because third-party/private scene video is intentionally not bundled
-- launcher/widget integration works but still needs visual/device refinement
-- the old generic app branding needed replacement
+Merged PR:
+#4 — Add official Atmosynq branding and animated/static modes
 
-## Selected official brand
-Use the user-selected Atmosynq design:
-- luminous cyan/blue/violet atmospheric vortex
-- dark navy background
-- stylized Atmosynq cyan/blue/violet wordmark
+PR exact head:
+`132cb785ffadaca3bf4bd950f5174e2634a57275`
 
-This branch adds that design as real Android resources, not concept-only artwork.
+PR CI:
+Actions run #31 passed.
 
-## Current branch
-`feat/brand-and-motion-modes`
-
-## Implemented on this branch
-- selected Atmosynq vortex mark added as a binary Android resource
-- selected stylized Atmosynq wordmark added as a binary Android resource
-- launcher icon + round icon
-- Android adaptive icon resources
-- branded Android launch/splash treatment
-- branded in-app header
-- branded home widget mark + widget picker preview
-- app version bumped to 0.2.0 / versionCode 3
-- global `MotionPreferenceStore`, Animated default
-- in-app Animated / Static toggle
-- toggle refreshes the home widget immediately
-- animated in-app vortex pulse/float/glow loop
-- static in-app vortex mode
-- live wallpaper reads the motion preference continuously
-
-## Animated wallpaper behavior
-- scene video plays
-- weather state transitions smoothly
-- rain/snow particles move
-- lightning can flash
-- normal home/lock/both frame cadence is used
-
-## Static wallpaper behavior
-- scene video pauses
-- current weather styling remains
-- rain/snow particles remain visible but freeze
-- lightning flashing stops
-- weather state updates without tweening
-- renderer drops to a 1 FPS low-motion refresh cadence
-
-## Animated widget behavior
-Android RemoteViews officially supports ViewFlipper, so the widget uses a supported lightweight animation path rather than claiming it can host the full OpenGL renderer.
-
-Animated mode:
-- three 320x187 weather-rendered frames
-- ~1.35 second ViewFlipper cadence with fade transitions
-- clear sun/moon glow changes subtly
-- cloud placement changes
-- rain streaks change
-- snowflake placement changes
-- fog drifts
-- thunderstorm cycle includes a lightning frame
-
-Combined raw bitmap payload is kept around 718 KiB for the three ARGB frames.
-
-## Static widget behavior
-- separate non-auto-start ViewFlipper layout
-- one representative weather frame
-- no scene cycling
-- thunderstorm static art still includes lightning
-
-## Platform boundary
-The launcher/adaptive icon is static. Ordinary Android launchers do not give apps a continuously running arbitrary icon renderer. Motion is provided in the app, widget, and live wallpaper where Android supports it.
-
-## Validation gate
-Open PR #4 from `feat/brand-and-motion-modes` to `main`.
-
-Before merge, exact-head CI must pass:
+Post-merge main CI:
+Actions run #32 passed:
 - Android resource linking
 - Kotlin compilation
-- all unit tests
+- unit tests
 - debug APK assembly
 - artifact upload
 
-Then verify post-merge main CI and download the exact APK for another device test.
+## Version
+- versionCode: 3
+- versionName: 0.2.0
 
-## Remaining real-device checks
-- selected launcher/adaptive icon appearance under Samsung icon masks
-- branded splash appearance
-- stylized wordmark scaling on phone
-- Animated / Static toggle behavior
-- animated widget frame flipping on Smart Launcher
-- static widget truly remains still
-- live wallpaper stops/starts motion immediately when the preference changes
-- battery/GPU difference between Animated and Static
-- widget resize behavior after ViewFlipper conversion
+## Official brand now in code
+- selected luminous cyan/blue/violet atmospheric vortex
+- selected stylized Atmosynq cyan/blue/violet wordmark
+- launcher icon
+- round icon
+- Android adaptive icon
+- Android launch/splash mark
+- in-app header
+- widget brand mark
+- widget picker preview
 
-## Known boundaries
-- the public repo still does not ship copyrighted/third-party wallpaper footage
-- private/original licensed `scene_neutral.mp4` remains supported
-- widget animation is lightweight frame flipping, not 30 FPS OpenGL
-- Apple implementation remains a later platform-specific target
+## Motion modes
+Animated is the default.
+
+### Animated
+App:
+- Atmosynq vortex continuously pulses, floats, and glows
+
+Home widget:
+- supported Android RemoteViews/ViewFlipper animation
+- three 320x187 weather-rendered frames
+- ~1.35 second fade/flip cadence
+- sun/moon glow changes
+- cloud placement changes
+- rain streak positions change
+- snow positions change
+- fog drifts
+- thunderstorm sequence includes a lightning frame
+
+Live wallpaper:
+- scene video plays when present
+- weather transitions tween smoothly
+- rain/snow particles move
+- lightning can flash
+- normal per-surface rendering cadence is used
+
+### Static
+App:
+- brand mark remains still
+
+Home widget:
+- separate non-auto-start layout
+- one representative weather frame
+- no scene cycling
+- static thunderstorm frame can retain visible lightning artwork
+
+Live wallpaper:
+- scene video pauses
+- current weather styling remains
+- rain/snow particles stay visible but freeze
+- lightning flashing stops
+- weather state updates without tweening
+- renderer uses a 1 FPS low-motion refresh cadence
+
+Changing the visual mode immediately requests a widget refresh, and the wallpaper reads the preference continuously.
+
+## Honest platform boundary
+The Android launcher/adaptive icon is static. Ordinary launchers do not expose an arbitrary continuously running app-icon renderer.
+
+The app, widget, and live wallpaper provide motion where Android supports it.
+
+## Latest validated APK
+Source main SHA:
+`9fa5df52c499dbeaefcf26e7a3363f4732e443b3`
+
+Actions run:
+#32
+
+Artifact:
+`atmosynq-debug-apk`
+
+Extracted APK size:
+1,032,763 bytes
+
+APK SHA-256:
+`3bbf9b46652b27b14453f2e1e3834fbddb3d4de87c4d6dc1d6488b151e26164f`
+
+## Real-device validation next
+Install v0.2.0 and verify:
+
+1. launcher icon uses the selected vortex and survives Samsung/Smart Launcher masks cleanly
+2. splash screen uses the selected mark without awkward cropping
+3. app header shows the selected vortex + stylized Atmosynq wordmark
+4. Animated mode makes the app mark continuously pulse/float/glow
+5. Static mode stops that motion immediately
+6. widget uses the Atmosynq mark
+7. Animated widget visibly cycles weather frames on Smart Launcher
+8. Static widget stays visually still
+9. clear-weather animation still has subtle sun/moon motion
+10. rain/snow/fog/cloud/storm scenes visibly change between animated frames
+11. thunder animation is not obnoxiously frequent
+12. switching modes refreshes the widget promptly
+13. Animated live wallpaper resumes video/particles/lightning
+14. Static live wallpaper pauses/freezes motion while keeping the correct weather scene
+15. home / lock / both wallpaper behavior from PR #3 still works
+16. no new crashes, clipping, heat, or abnormal battery use
+
+## Existing known boundary
+The public repo intentionally does not bundle the supplied third-party wallpaper video. Without an original/licensed private `scene_neutral.mp4`, the wallpaper uses the procedural fallback.
 
 ## Next step
-Open the brand/motion PR, let exact-head Android CI attack the resource and Kotlin changes, repair anything real, merge only when green, then install the new v0.2.0 APK on the Android device and validate the official branding plus both visual modes.
+Run the v0.2.0 device test from the validated APK. Use screenshots/video and exact observed behavior to root-cause anything that still looks wrong. Do not begin the Apple WidgetKit/ActivityKit target until this Android branding/motion pass is stable.
