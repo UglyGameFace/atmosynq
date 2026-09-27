@@ -17,7 +17,7 @@ class OpenMeteoClient {
         ).joinToString(",")
         val hourly = listOf(
             "temperature_2m", "apparent_temperature", "precipitation_probability",
-            "weather_code", "wind_speed_10m"
+            "weather_code", "wind_speed_10m", "is_day"
         ).joinToString(",")
         val daily = listOf(
             "weather_code", "temperature_2m_max", "temperature_2m_min",
@@ -88,6 +88,7 @@ class OpenMeteoClient {
         val hourlyPrecipitation = hourlyObject?.optJSONArray("precipitation_probability")
         val hourlyCodes = hourlyObject?.optJSONArray("weather_code")
         val hourlyWind = hourlyObject?.optJSONArray("wind_speed_10m")
+        val hourlyIsDay = hourlyObject?.optJSONArray("is_day")
         val hourlyCount = minOf(
             hourlyTimes?.length() ?: 0,
             hourlyTemperatures?.length() ?: 0
@@ -100,7 +101,8 @@ class OpenMeteoClient {
                 apparentTemperatureC = hourlyFeels?.optDouble(index, temp) ?: temp,
                 precipitationProbabilityPct = hourlyPrecipitation?.optInt(index, 0) ?: 0,
                 weatherCode = hourlyCodes?.optInt(index, 0) ?: 0,
-                windSpeedKmh = hourlyWind?.optDouble(index, 0.0) ?: 0.0
+                windSpeedKmh = hourlyWind?.optDouble(index, 0.0) ?: 0.0,
+                isDay = (hourlyIsDay?.optInt(index, 1) ?: 1) == 1
             )
         }
 
