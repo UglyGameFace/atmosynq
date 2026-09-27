@@ -43,7 +43,25 @@ Atmosynq maps real weather conditions directly into the visual scene.
 - Thunderstorms enable lightning effects
 - Day/night state changes the entire atmosphere
 
-The wallpaper and weather dashboard use the same weather state so the visual scene matches the conditions being reported.
+The wallpaper and weather dashboard use the same weather data path so the visual scene matches the conditions being reported.
+
+## Weather Dashboard
+
+The Android app currently includes:
+
+- Current conditions and temperature
+- Feels-like temperature
+- Daily high and low
+- Humidity
+- Wind and gusts
+- Cloud cover
+- Visibility
+- Current precipitation
+- Sunrise and sunset
+- Next 12 hours
+- 7-day forecast
+
+Hourly conditions also carry their own day/night state so clear-sky forecast icons do not show a daytime sun at night.
 
 ## Wallpaper Display Modes
 
@@ -60,7 +78,8 @@ Weather information will also be repositionable so it does not cover important p
 Atmosynq is being designed with location privacy in mind.
 
 - Location is used to retrieve local weather
-- Weather location is stored locally on the device
+- Saved weather coordinates are stored in app-private preferences on the device
+- Those preferences are excluded from Android cloud backup and device-transfer extraction
 - Continuous background location access is not required for the core design
 - No weather API key is required for the current weather provider implementation
 
@@ -76,9 +95,17 @@ Atmosynq is being designed with location privacy in mind.
 
 ## Development status
 
-The current source implements the first live-wallpaper/weather synchronization milestone. The full weather dashboard, forecast presentation, wallpaper weather-text modes, semantic scene masks, and store release work are still under active development.
+The current source implements the first live-wallpaper/weather synchronization milestone plus the first real weather dashboard and forecast experience.
 
 The Android CI workflow runs unit tests, assembles the debug APK, and uploads the APK as a GitHub Actions artifact.
+
+Still under active development:
+
+- On-device renderer and battery validation
+- Wallpaper Clean/Minimal/Detailed weather-text modes
+- Semantic scene masks for more convincing day/night relighting
+- Dedicated hail rendering
+- Store release hardening
 
 ## Scene assets
 
