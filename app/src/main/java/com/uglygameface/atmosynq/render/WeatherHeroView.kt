@@ -323,9 +323,12 @@ class WeatherHeroView(context: Context) : View(context) {
             val y = h * (0.38f + i * 0.105f)
             paint.shader = LinearGradient(
                 0f, y, w, y,
-                Color.TRANSPARENT,
-                Color.argb(58, 225, 232, 235),
-                Color.TRANSPARENT,
+                intArrayOf(
+                    Color.TRANSPARENT,
+                    Color.argb(58, 225, 232, 235),
+                    Color.TRANSPARENT
+                ),
+                floatArrayOf(0f, 0.5f, 1f),
                 Shader.TileMode.CLAMP
             )
             canvas.drawRect(-60f + drift, y, w + 60f + drift, y + h * 0.07f, paint)
