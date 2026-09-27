@@ -36,6 +36,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private var skybox: Skybox? = null
     private var indirectLight: IndirectLight? = null
     private var snapshot: WeatherSnapshot? = null
+    private var sceneProfile: SceneProfile = SceneProfile.DEFAULT
 
     private var animated = true
     private var attached = false
@@ -146,6 +147,14 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         isFocusable = true
         fallback.setAnimated(animated)
         fxOverlay.setAnimated(animated)
+    }
+
+    fun setSceneProfile(profile: SceneProfile) {
+        sceneProfile = profile
+        fallback.setSceneProfile(profile)
+        fxOverlay.setSceneProfile(profile)
+        viewer?.let { applySceneProfile(it) }
+        requestRender()
     }
 
     fun setWeather(snapshot: WeatherSnapshot?) {
@@ -301,7 +310,8 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             createEnvironment(v)
             loadAtmosynqScene(v)
             configureCamera(v)
-            captureAnimatedTransforms(v)
+            captureTrackedTransforms(v)
+            applySceneProfile(v)
             applyWeatherLighting(v)
 
             v
@@ -451,11 +461,11 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         )
     }
 
-    private fun captureAnimatedTransforms(v: ModelViewer) {
+    private fun captureTrackedTransforms(v: ModelViewer) {
         val asset = v.asset ?: return
         val tm = v.engine.transformManager
 
-        ANIMATED_ENTITIES.forEach { name ->
+        TRACKED_ENTITIES.forEach { name ->
             val entity = asset.getFirstEntityByName(name)
             if (entity == 0) return@forEach
 
@@ -463,6 +473,45 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             if (instance == 0) return@forEach
 
             baseTransforms[name] = tm.getTransform(instance, FloatArray(16)).copyOf()
+        }
+    }
+
+    private fun applySceneProfile(v: ModelViewer) {
+        val asset = v.asset ?: return
+        val tm = v.engine.transformManager
+        val mountainScale = sceneProfile.mountainScale
+
+        tm.openLocalTransformTransaction()
+        try {
+            MOUNTAINS.forEach { name ->
+                val base = baseTransforms[name] ?: return@forEach
+                val entity = asset.getFirstEntityByName(name)
+                if (entity == 0) return@forEach
+
+                val instance = tm.getInstance(entity)
+                if (instance == 0) return@forEach
+
+                val matrix = base.copyOf()
+
+                // Scale only the basis vectors; keep homogeneous / translation entries valid.
+                intArrayOf(
+                    0, 1, 2,
+                    4, 5, 6,
+                    8, 9, 10
+                ).forEach { index ->
+                    matrix[index] = base[index] * mountainScale
+                }
+
+                // Lowland locations push the prototype peaks below the horizon entirely.
+                // Highland / mountain places retain progressively more of the 3D terrain.
+                matrix[13] =
+                    base[13] -
+                        (1f - mountainScale) * 5.4f
+
+                tm.setTransform(instance, matrix)
+            }
+        } finally {
+            tm.commitLocalTransformTransaction()
         }
     }
 
@@ -636,6 +685,12 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             "Cloud2"
         )
 
+        private val MOUNTAINS = listOf(
+            "Mountain0",
+            "Mountain1",
+            "Mountain2"
+        )
+
         private val ANIMATED_ENTITIES = listOf(
             "Cloud0",
             "Cloud1",
@@ -644,6 +699,9 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             "RibbonPurple",
             "Sun"
         )
+
+        private val TRACKED_ENTITIES =
+            ANIMATED_ENTITIES + MOUNTAINS
 
         @Volatile
         private var nativeReady = false
