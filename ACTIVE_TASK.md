@@ -1,59 +1,37 @@
 # Active Task
 
 ## Active task / outcome
-Validate Atmosynq v0.2.1 after replacing the rejected split branding/UI with the user-approved integrated phone-safe Atmosynq logo and a weather-first dashboard.
+Repair the two real-device regressions found in Atmosynq v0.2.1: the dashboard logo is invisible and the app weather hero looks like a skipping slideshow.
 
-## User-approved brand rule
-Use the approved single-piece Atmosynq logo from now on:
-- luminous cyan/blue/violet vortex
-- **Atmosynq name is inside the logo**
-- no separate wordmark outside the logo
-- designed to read cleanly on phones
+## Root cause from real-device test
+1. The dashboard reserves space for the integrated logo resource, but that resource is not visibly rendering on-device in the header.
+2. The app hero is intentionally swapping three pre-rendered weather bitmaps every 1.35 seconds, so Animated mode literally behaves like a slideshow.
 
-Old split `atmosynq_mark.webp` + `atmosynq_wordmark.webp` assets are removed.
-
-## Current branch
+## Repair branch
 `feat/integrated-logo-weather-first-ui`
 
 ## Version
-- versionCode: 4
-- versionName: 0.2.1
+- versionCode: 5
+- versionName: 0.2.2
 
-## Implemented on this branch
-- new integrated `atmosynq_logo.webp`
-- legacy launcher icon uses the integrated logo
-- Android adaptive launcher icon uses a safe-zone foreground wrapper
-- round adaptive icon uses the same integrated logo
-- splash screen uses the integrated logo
-- widget badge and widget picker use the integrated logo
-- app header uses one compact integrated logo only
-- removed the old separate wordmark beneath the icon
-- removed the oversized animated logo treatment
-- redesigned Animated / Static as a compact segmented control
-- redesigned the dashboard around a large live weather hero
-- hero uses the same Atmosynq weather scene renderer as the widget
-- Animated hero cycles weather frames
-- Static hero freezes on a representative weather frame
-- clear/day/night/cloud/rain/snow/fog/thunder visuals remain weather-driven
-- compact premium action buttons replace the old giant gray default buttons
-- tighter spacing and darker cyan/navy visual system
-- hourly and 7-day forecast stay below the primary actions
+## Fixes now implemented
+- replaced the invisible header resource path with a phone-safe composed Atmosynq tile using the launcher artwork known to render on-device
+- keeps the **Atmosynq name inside the logo tile**, not as a detached outside wordmark
+- removed the app hero's three-bitmap slideshow loop entirely
+- added `WeatherHeroView`, a real continuously drawn Canvas weather surface
+- Animated mode now moves clouds continuously, moves rain continuously, drifts snow/fog, softly pulses sun/moon glow, and flashes lightning on a continuous timeline
+- Static mode uses the same weather scene but does not schedule continuous redraws
+- dashboard hero now receives the live `WeatherSnapshot` directly instead of generating three bitmap frames
+- widget animation remains separate because Android widgets are constrained to RemoteViews-compatible motion
 
-## Motion behavior
-Animated:
-- app weather hero cycles scene frames with short fades
-- widget keeps its supported ViewFlipper weather animation
-- live wallpaper keeps its full motion path
-
-Static:
-- app weather hero freezes
-- widget remains still
-- live wallpaper freezes motion while retaining the correct weather styling
-
-The integrated logo itself is intentionally not bobbing/pulsing anymore. Motion belongs to the weather experience, not the brand mark.
+## Brand rule
+Use one integrated phone-safe Atmosynq logo treatment:
+- luminous vortex
+- Atmosynq name inside the tile
+- no detached wordmark under or beside it
 
 ## Validation gate
-Open a PR from `feat/integrated-logo-weather-first-ui` to `main`.
+Open a new repair PR to `main`.
 
 Before merge, exact-head CI must pass:
 - Android resource linking
@@ -62,30 +40,24 @@ Before merge, exact-head CI must pass:
 - debug APK assembly
 - artifact upload
 
-Then verify post-merge `main` CI and install that exact APK on the Android test device.
+Then verify post-merge `main` CI and install that exact v0.2.2 APK.
 
-## Real-device checks after CI
-1. integrated logo is readable and not cropped on Smart Launcher / Samsung masks
-2. app header is compact and does not dominate the screen
-3. no separate Atmosynq text/wordmark appears below the logo
-4. Animated / Static looks like a segmented control, not a default Android button
-5. current-weather hero is visually dominant
-6. hero scene matches real weather
-7. Animated hero visibly moves without looking like a slideshow
-8. Static hero stays still
-9. actions look consistent and premium
-10. hourly + 7-day sections remain readable
-11. widget uses the integrated logo
-12. splash uses the integrated logo cleanly
-13. wallpaper/widget behavior from prior merged work still passes regression checks
+## Device validation after CI
+1. logo is visibly present at the top
+2. Atmosynq name is inside the logo tile
+3. logo is compact and phone-safe
+4. weather hero no longer jumps between discrete frames
+5. clouds move smoothly
+6. rain/snow/fog move smoothly when active
+7. clear weather has subtle continuous motion
+8. thunder lightning is brief and not constant
+9. Static mode stops app hero motion
+10. widget behavior remains intact
+11. wallpaper behavior remains intact
+12. no heat/crash regression
 
 ## Existing boundary
 The public repo still does not ship third-party/copyrighted scene video. The live wallpaper uses the procedural fallback unless an original/licensed private scene is provided.
 
-## Backlog after this gate
-- Xiaomi/rear-display Weather Portal work
-- Apple SwiftUI / WidgetKit / ActivityKit target
-- richer original/licensed scene library
-
 ## Next step
-Run exact-head CI for this redesign. Fix real build failures only. Merge when green, verify `main`, then provide the exact v0.2.1 APK for device validation.
+Run exact-head Android CI on the v0.2.2 repair, fix only real failures, merge when green, verify main, then provide the exact APK for device testing.
