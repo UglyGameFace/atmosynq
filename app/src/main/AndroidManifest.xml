@@ -21,6 +21,18 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.AtmosynqWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.uglygameface.atmosynq.action.REFRESH_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/atmosynq_widget_info" />
+        </receiver>
+
         <service
             android:name=".WeatherWallpaperService"
             android:exported="true"

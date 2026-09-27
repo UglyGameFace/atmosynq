@@ -2,4 +2,9 @@
     <string name="app_name">Atmosynq</string>
     <string name="wallpaper_name">Atmosynq Live Weather</string>
     <string name="wallpaper_description">Animated scene synchronized with your local daylight and real-world weather.</string>
+    <string name="widget_name">Atmosynq Weather</string>
+    <string name="widget_description">Live local weather with scene visuals for rain, snow, fog, clouds, day, night, and storms.</string>
+    <string name="widget_scene_description">Weather-reactive Atmosynq scene</string>
+    <string name="widget_loading">Loading local weather</string>
+    <string name="widget_refresh">Refresh weather</string>
 </resources>
