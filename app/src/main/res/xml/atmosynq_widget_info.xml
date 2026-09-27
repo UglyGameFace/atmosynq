@@ -6,7 +6,7 @@
     android:minHeight="120dp"
     android:minResizeWidth="180dp"
     android:minResizeHeight="100dp"
-    android:previewImage="@android:drawable/ic_menu_compass"
+    android:previewImage="@drawable/atmosynq_mark"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />
