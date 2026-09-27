@@ -670,26 +670,26 @@ class MainActivity : Activity() {
             "H ${formatTemperature(day.highC)}  •  L ${formatTemperature(day.lowC)}  •  ${day.precipitationProbabilityPct}% precip"
         } ?: ""
 
-        currentDetails.text = buildString {
-            append(
-                "Feels ${formatTemperature(current.apparentTemperatureC)}  •  " +
-                    "Humidity ${current.relativeHumidityPct.roundToInt()}%"
-            )
-            append("\nWind ${formatWind(current.windSpeedKmh)}")
+        heroLocation.text = "●  Local weather"
+        metricFeels.text = formatTemperature(current.apparentTemperatureC)
+        metricHumidity.text = "${current.relativeHumidityPct.roundToInt()}%"
+        metricWind.text =
             if (current.windGustKmh > current.windSpeedKmh + 2.0) {
-                append("  •  Gusts ${formatWind(current.windGustKmh)}")
+                "${formatWind(current.windSpeedKmh)}\nG ${formatWind(current.windGustKmh)}"
+            } else {
+                formatWind(current.windSpeedKmh)
             }
-            append("  •  Visibility ${formatVisibility(current.visibilityM)}")
-            append("\nPrecipitation ${formatPrecipitation(current.precipitationMm)}")
+        metricVisibility.text = formatVisibility(current.visibilityM)
+        metricPrecipitation.text = "💧  Precipitation  ${formatPrecipitation(current.precipitationMm)}"
 
-            val sunrise = formatClock(current.sunriseIsoLocal)
-            val sunset = formatClock(current.sunsetIsoLocal)
-            if (sunrise != null || sunset != null) {
-                append("  •  ")
-                if (sunrise != null) append("Sunrise $sunrise")
-                if (sunrise != null && sunset != null) append(" / ")
-                if (sunset != null) append("Sunset $sunset")
-            }
+        val sunrise = formatClock(current.sunriseIsoLocal)
+        val sunset = formatClock(current.sunsetIsoLocal)
+        metricSun.text = buildString {
+            append("☀  ")
+            if (sunrise != null) append(sunrise)
+            if (sunrise != null && sunset != null) append(" / ")
+            if (sunset != null) append(sunset)
+            if (sunrise == null && sunset == null) append("--")
         }
 
         renderHourly(report)
