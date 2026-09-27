@@ -52,7 +52,13 @@ class MainActivity : Activity() {
     private lateinit var currentTemperature: TextView
     private lateinit var currentCondition: TextView
     private lateinit var currentHighLow: TextView
-    private lateinit var currentDetails: TextView
+    private lateinit var heroLocation: TextView
+    private lateinit var metricFeels: TextView
+    private lateinit var metricHumidity: TextView
+    private lateinit var metricWind: TextView
+    private lateinit var metricVisibility: TextView
+    private lateinit var metricPrecipitation: TextView
+    private lateinit var metricSun: TextView
     private lateinit var hourlySection: LinearLayout
     private lateinit var hourlyContainer: LinearLayout
     private lateinit var dailySection: LinearLayout
@@ -106,52 +112,27 @@ class MainActivity : Activity() {
             )
         )
 
-        val brandTile = FrameLayout(this).apply {
-            background = roundedBackground(Color.rgb(5, 18, 34), 24, Color.rgb(37, 116, 174))
-            clipToOutline = true
+        val brandChip = ImageView(this).apply {
+            setImageResource(R.drawable.atmosynq_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "Atmosynq"
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            background = gradientBackground(
+                intArrayOf(
+                    Color.rgb(6, 27, 52),
+                    Color.rgb(12, 50, 83),
+                    Color.rgb(22, 34, 72)
+                ),
+                24,
+                COLOR_BRAND_STROKE
+            )
         }
-        brandTile.addView(
-            ImageView(this).apply {
-                setImageResource(R.mipmap.ic_launcher)
-                scaleType = ImageView.ScaleType.CENTER_CROP
-            },
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        )
-        brandTile.addView(
-            View(this).apply {
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.TRANSPARENT, Color.argb(220, 3, 10, 20))
-                )
-            },
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(42),
-                Gravity.BOTTOM
-            )
-        )
-        brandTile.addView(
-            TextView(this).apply {
-                text = "Atmosynq"
-                textSize = 13.5f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-            },
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(34),
-                Gravity.BOTTOM
-            )
-        )
         content.addView(
-            brandTile,
-            LinearLayout.LayoutParams(dp(104), dp(104)).apply {
+            brandChip,
+            LinearLayout.LayoutParams(
+                dp(190),
+                dp(58)
+            ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
                 bottomMargin = dp(4)
             }
@@ -160,10 +141,10 @@ class MainActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text = "Weather that comes alive."
-                textSize = 13.5f
+                textSize = 12.5f
                 setTextColor(COLOR_MUTED)
                 gravity = Gravity.CENTER
-                setPadding(0, dp(1), 0, dp(14))
+                setPadding(0, 0, 0, dp(10))
             },
             matchWrap()
         )
@@ -195,7 +176,7 @@ class MainActivity : Activity() {
         )
 
         val currentCard = FrameLayout(this).apply {
-            background = roundedBackground(COLOR_HERO_FALLBACK, 26, COLOR_HERO_STROKE)
+            background = roundedBackground(COLOR_HERO_FALLBACK, 28, COLOR_HERO_STROKE)
             clipToOutline = true
         }
 
@@ -216,9 +197,9 @@ class MainActivity : Activity() {
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     intArrayOf(
-                        Color.argb(8, 4, 10, 22),
-                        Color.argb(82, 4, 10, 22),
-                        Color.argb(230, 4, 10, 22)
+                        Color.argb(24, 2, 10, 24),
+                        Color.argb(30, 2, 10, 24),
+                        Color.argb(190, 2, 9, 20)
                     )
                 )
             },
@@ -228,129 +209,194 @@ class MainActivity : Activity() {
             )
         )
 
-        val heroContent = LinearLayout(this).apply {
+        val heroPrimary = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.START
-            setPadding(dp(20), dp(18), dp(20), dp(18))
+            setPadding(dp(18), dp(16), dp(18), 0)
         }
+
+        heroLocation = TextView(this).apply {
+            text = "●  Local weather"
+            textSize = 12.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(COLOR_LOCATION)
+            gravity = Gravity.START
+        }
+        heroPrimary.addView(heroLocation, matchWrap())
 
         currentTemperature = TextView(this).apply {
             text = "--°"
-            textSize = 60f
+            textSize = 64f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
             includeFontPadding = false
+            setPadding(0, dp(2), 0, 0)
         }
-        heroContent.addView(currentTemperature, matchWrap())
+        heroPrimary.addView(currentTemperature, matchWrap())
 
         currentCondition = TextView(this).apply {
             text = "Weather not synced"
-            textSize = 19f
+            textSize = 21f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
             gravity = Gravity.START
         }
-        heroContent.addView(currentCondition, matchWrap())
+        heroPrimary.addView(currentCondition, matchWrap())
 
         currentHighLow = TextView(this).apply {
             text = "Use your location to bring the scene alive"
             textSize = 13.5f
             setTextColor(COLOR_TEXT_SECONDARY)
             gravity = Gravity.START
-            setPadding(0, dp(5), 0, 0)
+            setPadding(0, dp(4), 0, 0)
         }
-        heroContent.addView(currentHighLow, matchWrap())
-
-        currentDetails = TextView(this).apply {
-            text = "Dashboard, widget, and wallpaper stay synced to the same weather."
-            textSize = 12.5f
-            setTextColor(COLOR_MUTED)
-            gravity = Gravity.START
-            setLineSpacing(0f, 1.18f)
-            setPadding(0, dp(12), 0, 0)
-            maxLines = 4
-        }
-        heroContent.addView(currentDetails, matchWrap())
+        heroPrimary.addView(currentHighLow, matchWrap())
 
         currentCard.addView(
-            heroContent,
+            heroPrimary,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP
+            )
+        )
+
+        val metricsPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(10))
+            background = roundedBackground(
+                Color.argb(188, 7, 22, 39),
+                20,
+                Color.argb(150, 87, 168, 220)
+            )
+        }
+
+        val metricsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        metricFeels = metricValue("--°")
+        metricHumidity = metricValue("--%")
+        metricWind = metricValue("--")
+        metricVisibility = metricValue("--")
+
+        metricsRow.addView(metricCell("Feels like", metricFeels), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsRow.addView(metricCell("Humidity", metricHumidity), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsRow.addView(metricCell("Wind", metricWind), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsRow.addView(metricCell("Visibility", metricVisibility), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsPanel.addView(metricsRow, matchWrap())
+
+        metricsPanel.addView(
+            View(this).apply { setBackgroundColor(Color.argb(80, 150, 205, 235)) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(8)
+            }
+        )
+
+        val metricsBottom = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        metricPrecipitation = TextView(this).apply {
+            text = "Precipitation  --"
+            textSize = 11.5f
+            setTextColor(COLOR_TEXT_SECONDARY)
+            gravity = Gravity.START
+        }
+        metricSun = TextView(this).apply {
+            text = "Sunrise / sunset  --"
+            textSize = 11.5f
+            setTextColor(COLOR_TEXT_SECONDARY)
+            gravity = Gravity.END
+        }
+        metricsBottom.addView(metricPrecipitation, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        metricsBottom.addView(metricSun, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.25f))
+        metricsPanel.addView(metricsBottom, matchWrap())
+
+        currentCard.addView(
+            metricsPanel,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM
-            )
+            ).apply {
+                leftMargin = dp(14)
+                rightMargin = dp(14)
+                bottomMargin = dp(14)
+            }
         )
 
         content.addView(
             currentCard,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(270)
+                dp(360)
             ).apply {
                 bottomMargin = dp(14)
             }
         )
 
-        locationButton = premiumButton("Use current location", primary = true) {
-            requestOrCaptureLocation()
-        }
-        content.addView(
-            locationButton,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(52)
-            ).apply {
-                bottomMargin = dp(8)
-            }
-        )
-
-        wallpaperButton = premiumButton(
-            if (Build.VERSION.SDK_INT >= 36) {
-                "Set home / lock live wallpaper"
-            } else {
-                "Preview & set live wallpaper"
-            },
-            primary = false
-        ) {
+        wallpaperButton = premiumButton("▣   Set Live Wallpaper   ›", primary = true) {
             openWallpaperPicker()
         }
         content.addView(
             wallpaperButton,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(52)
+                dp(58)
             ).apply {
-                bottomMargin = dp(8)
+                bottomMargin = dp(10)
             }
         )
 
-        widgetButton = premiumButton("Add Atmosynq home widget", primary = false) {
+        val secondaryActions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
+        locationButton = premiumButton("⌖  Current Location", primary = false) {
+            requestOrCaptureLocation()
+        }
+        widgetButton = premiumButton("▦  Add Home Widget", primary = false) {
             requestPinWidget()
         }
-        content.addView(
-            widgetButton,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(52)
-            ).apply {
-                bottomMargin = dp(14)
+
+        secondaryActions.addView(
+            locationButton,
+            LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                marginEnd = dp(5)
             }
+        )
+        secondaryActions.addView(
+            widgetButton,
+            LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                marginStart = dp(5)
+            }
+        )
+        content.addView(
+            secondaryActions,
+            matchWrap().apply { bottomMargin = dp(14) }
         )
 
         hourlySection = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
+            setPadding(dp(12), dp(10), dp(12), dp(12))
+            background = roundedBackground(COLOR_SECTION_BG, 22, COLOR_STROKE)
         }
-        hourlySection.addView(sectionTitle("Next 12 hours"), matchWrap())
+        hourlySection.addView(sectionTitle("Next 12 Hours"), matchWrap())
 
         hourlyContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(2), dp(4), dp(4))
+            setPadding(0, dp(2), dp(4), dp(2))
         }
         hourlySection.addView(
             HorizontalScrollView(this).apply {
                 isHorizontalScrollBarEnabled = false
+                overScrollMode = View.OVER_SCROLL_NEVER
                 addView(
                     hourlyContainer,
                     FrameLayout.LayoutParams(
@@ -363,20 +409,25 @@ class MainActivity : Activity() {
         )
         content.addView(
             hourlySection,
-            matchWrap().apply { bottomMargin = dp(6) }
+            matchWrap().apply { bottomMargin = dp(12) }
         )
 
         dailySection = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedBackground(COLOR_SECTION_BG, 22, COLOR_STROKE)
         }
-        dailySection.addView(sectionTitle("7-day forecast"), matchWrap())
+        dailySection.addView(sectionTitle("7-Day Forecast"), matchWrap())
 
         dailyContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
         dailySection.addView(dailyContainer, matchWrap())
-        content.addView(dailySection, matchWrap())
+        content.addView(
+            dailySection,
+            matchWrap().apply { bottomMargin = dp(4) }
+        )
 
         content.addView(Space(this), LinearLayout.LayoutParams(1, dp(12)))
 
@@ -605,26 +656,26 @@ class MainActivity : Activity() {
             "H ${formatTemperature(day.highC)}  •  L ${formatTemperature(day.lowC)}  •  ${day.precipitationProbabilityPct}% precip"
         } ?: ""
 
-        currentDetails.text = buildString {
-            append(
-                "Feels ${formatTemperature(current.apparentTemperatureC)}  •  " +
-                    "Humidity ${current.relativeHumidityPct.roundToInt()}%"
-            )
-            append("\nWind ${formatWind(current.windSpeedKmh)}")
+        heroLocation.text = "●  Local weather"
+        metricFeels.text = formatTemperature(current.apparentTemperatureC)
+        metricHumidity.text = "${current.relativeHumidityPct.roundToInt()}%"
+        metricWind.text =
             if (current.windGustKmh > current.windSpeedKmh + 2.0) {
-                append("  •  Gusts ${formatWind(current.windGustKmh)}")
+                "${formatWind(current.windSpeedKmh)}\nG ${formatWind(current.windGustKmh)}"
+            } else {
+                formatWind(current.windSpeedKmh)
             }
-            append("  •  Visibility ${formatVisibility(current.visibilityM)}")
-            append("\nPrecipitation ${formatPrecipitation(current.precipitationMm)}")
+        metricVisibility.text = formatVisibility(current.visibilityM)
+        metricPrecipitation.text = "💧  Precipitation  ${formatPrecipitation(current.precipitationMm)}"
 
-            val sunrise = formatClock(current.sunriseIsoLocal)
-            val sunset = formatClock(current.sunsetIsoLocal)
-            if (sunrise != null || sunset != null) {
-                append("  •  ")
-                if (sunrise != null) append("Sunrise $sunrise")
-                if (sunrise != null && sunset != null) append(" / ")
-                if (sunset != null) append("Sunset $sunset")
-            }
+        val sunrise = formatClock(current.sunriseIsoLocal)
+        val sunset = formatClock(current.sunsetIsoLocal)
+        metricSun.text = buildString {
+            append("☀  ")
+            if (sunrise != null) append(sunrise)
+            if (sunrise != null && sunset != null) append(" / ")
+            if (sunset != null) append(sunset)
+            if (sunrise == null && sunset == null) append("--")
         }
 
         renderHourly(report)
@@ -639,7 +690,7 @@ class MainActivity : Activity() {
             .atZone(zone)
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
 
-        status.text = "Synced • $updated"
+        status.text = "●  Synced • $updated"
     }
 
     private fun renderHourly(report: WeatherReport) {
@@ -704,9 +755,9 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dp(10), dp(12), dp(10), dp(12))
             background = roundedBackground(
-                COLOR_CARD_SOFT,
-                18,
-                COLOR_STROKE
+                if (label == "Now") COLOR_HOURLY_ACTIVE else COLOR_CARD_SOFT,
+                16,
+                if (label == "Now") COLOR_SEGMENT_STROKE else COLOR_STROKE
             )
 
             addView(
@@ -753,7 +804,7 @@ class MainActivity : Activity() {
         }.also { card ->
             card.layoutParams =
                 LinearLayout.LayoutParams(
-                    dp(90),
+                    dp(82),
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 ).apply {
                     marginEnd = dp(8)
@@ -772,8 +823,16 @@ class MainActivity : Activity() {
             dailyContainer.addView(dayRow(day, index))
             if (index < minOf(6, report.daily.lastIndex)) {
                 dailyContainer.addView(
-                    Space(this),
-                    LinearLayout.LayoutParams(1, dp(7))
+                    View(this).apply {
+                        setBackgroundColor(Color.argb(70, 118, 164, 194))
+                    },
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(1)
+                    ).apply {
+                        leftMargin = dp(8)
+                        rightMargin = dp(8)
+                    }
                 )
             }
         }
@@ -789,11 +848,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = roundedBackground(
-                COLOR_CARD_SOFT,
-                18,
-                COLOR_STROKE
-            )
+            setBackgroundColor(Color.TRANSPARENT)
 
             addView(
                 TextView(this@MainActivity).apply {
@@ -897,6 +952,65 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun metricValue(initial: String): TextView =
+        TextView(this).apply {
+            text = initial
+            textSize = 13.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.START
+            maxLines = 2
+            includeFontPadding = false
+        }
+
+    private fun metricCell(
+        label: String,
+        valueView: TextView
+    ): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.START
+            setPadding(dp(4), 0, dp(4), 0)
+
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = label
+                    textSize = 10.5f
+                    setTextColor(COLOR_MUTED)
+                    includeFontPadding = false
+                },
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+
+            addView(
+                valueView,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = dp(2)
+                }
+            )
+        }
+
+    private fun gradientBackground(
+        colors: IntArray,
+        radiusDp: Int,
+        strokeColor: Int? = null
+    ): GradientDrawable =
+        GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            colors
+        ).apply {
+            cornerRadius = dp(radiusDp).toFloat()
+            if (strokeColor != null && strokeColor != Color.TRANSPARENT) {
+                setStroke(dp(1), strokeColor)
+            }
+        }
+
     private fun premiumButton(
         label: String,
         primary: Boolean,
@@ -907,18 +1021,25 @@ class MainActivity : Activity() {
             textSize = 14f
             isAllCaps = false
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(
+            setTextColor(Color.WHITE)
+            background =
                 if (primary) {
-                    Color.rgb(4, 18, 32)
+                    gradientBackground(
+                        intArrayOf(
+                            Color.rgb(25, 199, 255),
+                            Color.rgb(20, 119, 245),
+                            Color.rgb(141, 82, 255)
+                        ),
+                        20,
+                        Color.rgb(109, 222, 255)
+                    )
                 } else {
-                    Color.WHITE
+                    roundedBackground(
+                        COLOR_BUTTON_BG,
+                        18,
+                        COLOR_STROKE
+                    )
                 }
-            )
-            background = roundedBackground(
-                if (primary) COLOR_PRIMARY else COLOR_BUTTON_BG,
-                18,
-                if (primary) COLOR_PRIMARY else COLOR_STROKE
-            )
             stateListAnimator = null
             minHeight = 0
             minWidth = 0
@@ -1083,8 +1204,12 @@ class MainActivity : Activity() {
         private val COLOR_BG_TOP = Color.rgb(7, 24, 43)
         private val COLOR_BACKGROUND = Color.rgb(4, 12, 23)
         private val COLOR_HERO_FALLBACK = Color.rgb(10, 28, 48)
-        private val COLOR_HERO_STROKE = Color.rgb(39, 112, 166)
-        private val COLOR_CARD_SOFT = Color.rgb(16, 37, 57)
+        private val COLOR_HERO_STROKE = Color.rgb(52, 139, 196)
+        private val COLOR_BRAND_STROKE = Color.rgb(57, 151, 220)
+        private val COLOR_LOCATION = Color.rgb(177, 222, 255)
+        private val COLOR_SECTION_BG = Color.rgb(8, 27, 45)
+        private val COLOR_HOURLY_ACTIVE = Color.rgb(11, 63, 96)
+        private val COLOR_CARD_SOFT = Color.rgb(13, 40, 62)
         private val COLOR_STATUS_BG = Color.rgb(11, 31, 50)
         private val COLOR_SEGMENT_TRACK = Color.rgb(12, 31, 49)
         private val COLOR_SEGMENT_ACTIVE = Color.rgb(23, 100, 155)
