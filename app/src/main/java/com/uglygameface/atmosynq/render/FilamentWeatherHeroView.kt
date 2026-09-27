@@ -337,7 +337,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         view.setPostProcessingEnabled(true)
         view.setShadowingEnabled(true)
         view.setScreenSpaceRefractionEnabled(true)
-        view.shadowType = FilamentView.ShadowType.PCSS
+        view.setShadowType(FilamentView.ShadowType.PCSS)
         view.dithering = FilamentView.Dithering.TEMPORAL
 
         view.renderQuality = view.renderQuality.apply {
