@@ -9,8 +9,6 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.view.View
-import com.uglygameface.atmosynq.location.LocationSceneProfile
-import com.uglygameface.atmosynq.location.TerrainKind
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import kotlin.math.cos
 import kotlin.math.sin
@@ -19,11 +17,11 @@ import kotlin.random.Random
 class WeatherHeroView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var snapshot: WeatherSnapshot? = null
-    private var sceneProfile: LocationSceneProfile? = null
+    private var sceneProfile: SceneProfile = SceneProfile.DEFAULT
     private var animated = true
     private var startedAt = System.currentTimeMillis()
 
-    fun setSceneProfile(profile: LocationSceneProfile?) {
+    fun setSceneProfile(profile: SceneProfile) {
         sceneProfile = profile
         invalidate()
     }
@@ -450,13 +448,13 @@ class WeatherHeroView(context: Context) : View(context) {
         w: Float,
         h: Float
     ) {
-        val horizon = horizon
+        val horizon = h * 0.67f
         val terrainStrength =
-            when (sceneProfile?.terrain) {
+            when (sceneProfile.terrain) {
                 TerrainKind.MOUNTAIN -> 1.0f
-                TerrainKind.ROLLING -> 0.50f
-                TerrainKind.FLAT -> 0.12f
-                null -> 0.32f
+                TerrainKind.HIGHLAND -> 0.68f
+                TerrainKind.ROLLING -> 0.36f
+                TerrainKind.FLAT -> 0.05f
             }
         val shift = if (animated) {
             sin(t * 0.05f) * w * 0.004f
