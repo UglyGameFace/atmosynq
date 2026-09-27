@@ -3,6 +3,7 @@ package com.uglygameface.atmosynq
 import android.Manifest
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
@@ -646,6 +647,11 @@ class MainActivity : Activity() {
         val scaleY = ObjectAnimator.ofFloat(brandMark, View.SCALE_Y, 1f, 1.035f, 1f)
         val lift = ObjectAnimator.ofFloat(brandMark, View.TRANSLATION_Y, 0f, -dp(3).toFloat(), 0f)
         val glow = ObjectAnimator.ofFloat(brandMark, View.ALPHA, 0.92f, 1f, 0.92f)
+
+        listOf(scaleX, scaleY, lift, glow).forEach { animator ->
+            animator.repeatCount = ValueAnimator.INFINITE
+            animator.repeatMode = ValueAnimator.RESTART
+        }
 
         brandAnimator = AnimatorSet().apply {
             playTogether(scaleX, scaleY, lift, glow)
