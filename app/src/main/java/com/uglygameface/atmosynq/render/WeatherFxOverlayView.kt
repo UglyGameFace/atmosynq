@@ -9,10 +9,6 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.view.View
-import com.uglygameface.atmosynq.location.LatitudeZone
-import com.uglygameface.atmosynq.location.LocationSceneProfile
-import com.uglygameface.atmosynq.location.SettlementKind
-import com.uglygameface.atmosynq.location.TerrainKind
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import kotlin.math.cos
 import kotlin.math.floor
@@ -35,7 +31,7 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     private val path = Path()
 
     private var snapshot: WeatherSnapshot? = null
-    private var sceneProfile: LocationSceneProfile? = null
+    private var sceneProfile: SceneProfile = SceneProfile.DEFAULT
     private var animated = true
     private var startedAtNanos = System.nanoTime()
     private var parallaxX = 0f
@@ -58,7 +54,7 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         invalidate()
     }
 
-    fun setSceneProfile(profile: LocationSceneProfile?) {
+    fun setSceneProfile(profile: SceneProfile) {
         sceneProfile = profile
         invalidate()
     }
@@ -277,18 +273,18 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             )
         }
 
-        if (profile?.terrain == TerrainKind.ROLLING) {
+        if (profile.terrain == TerrainKind.ROLLING) {
             drawRollingHorizon(canvas, isDay, h * 0.78f)
         }
 
-        when (profile?.settlement ?: SettlementKind.SMALL_TOWN) {
+        when (profile.settlement) {
             SettlementKind.METRO ->
                 drawCitySkyline(canvas, isDay, cloud, dense = true)
             SettlementKind.CITY ->
                 drawCitySkyline(canvas, isDay, cloud, dense = false)
             SettlementKind.TOWN ->
                 drawNeighborhood(canvas, isDay, dense = true)
-            SettlementKind.SMALL_TOWN ->
+            SettlementKind.LOCAL ->
                 drawNeighborhood(canvas, isDay, dense = false)
         }
 
@@ -296,8 +292,8 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             canvas = canvas,
             isDay = isDay,
             cloud = cloud,
-            zone = profile?.latitudeZone ?: LatitudeZone.TEMPERATE,
-            settlement = profile?.settlement ?: SettlementKind.SMALL_TOWN
+            zone = profile.latitudeBand,
+            settlement = profile.settlement
         )
 
         paint.style = Paint.Style.FILL
@@ -487,7 +483,7 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         canvas: Canvas,
         isDay: Boolean,
         cloud: Float,
-        zone: LatitudeZone,
+        zone: LatitudeBand,
         settlement: SettlementKind
     ) {
         val w = width.toFloat()
@@ -497,7 +493,7 @@ class WeatherFxOverlayView(context: Context) : View(context) {
                 SettlementKind.METRO -> 3
                 SettlementKind.CITY -> 5
                 SettlementKind.TOWN -> 8
-                SettlementKind.SMALL_TOWN -> 11
+                SettlementKind.LOCAL -> 11
             }
         val alpha =
             if (isDay) {
@@ -520,23 +516,23 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             val size = h * (0.07f + (index % 4) * 0.012f)
 
             when (zone) {
-                LatitudeZone.TROPICAL ->
+                LatitudeBand.TROPICAL ->
                     drawPalm(canvas, x, baseY, size, alpha)
-                LatitudeZone.WARM ->
+                LatitudeBand.WARM ->
                     if (index % 3 == 0) {
                         drawPalm(canvas, x, baseY, size * 0.88f, alpha)
                     } else {
                         drawBroadleaf(canvas, x, baseY, size, alpha)
                     }
-                LatitudeZone.TEMPERATE ->
+                LatitudeBand.TEMPERATE ->
                     if (index % 2 == 0) {
                         drawBroadleaf(canvas, x, baseY, size, alpha)
                     } else {
                         drawPine(canvas, x, baseY, size, alpha)
                     }
-                LatitudeZone.COOL ->
+                LatitudeBand.COOL ->
                     drawPine(canvas, x, baseY, size, alpha)
-                LatitudeZone.POLAR ->
+                LatitudeBand.POLAR ->
                     if (index % 2 == 0) {
                         drawPine(canvas, x, baseY, size * 0.72f, alpha)
                     }
