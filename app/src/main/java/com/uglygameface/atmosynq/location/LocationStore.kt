@@ -2,81 +2,93 @@ package com.uglygameface.atmosynq.location
 
 import android.content.Context
 
-enum class LocationSource {
-    DEVICE,
-    SEARCH
-}
-
 data class SavedLocation(
     val latitude: Double,
     val longitude: Double,
     val savedAtEpochMs: Long,
-    val displayName: String? = null,
-    val locality: String? = null,
-    val admin1: String? = null,
-    val countryCode: String? = null,
-    val country: String? = null,
-    val postalCode: String? = null,
-    val elevationM: Double? = null,
-    val population: Long? = null,
-    val featureCode: String? = null,
-    val source: LocationSource = LocationSource.DEVICE
+    val displayName: String = "Local weather",
+    val source: String = SOURCE_GPS,
+    val population: Long = 0L,
+    val elevationM: Double = Double.NaN,
+    val reliefM: Double = 0.0,
+    val countryCode: String? = null
 ) {
-    fun heroLabel(): String =
-        displayName
-            ?.takeIf { it.isNotBlank() }
-            ?: buildList {
-                locality?.takeIf { it.isNotBlank() }?.let(::add)
-                admin1?.takeIf { it.isNotBlank() && !it.equals(locality, ignoreCase = true) }?.let(::add)
-                countryCode?.takeIf { it.isNotBlank() }?.let(::add)
-            }.joinToString(", ")
-                .takeIf { it.isNotBlank() }
-            ?: postalCode?.takeIf { it.isNotBlank() }
-            ?: "Current location"
+    companion object {
+        const val SOURCE_GPS = "gps"
+        const val SOURCE_SEARCH = "search"
+    }
 }
 
 class LocationStore(context: Context) {
     private val prefs =
-        context.getSharedPreferences("atmosynq_location", Context.MODE_PRIVATE)
+        context.getSharedPreferences(
+            "atmosynq_location",
+            Context.MODE_PRIVATE
+        )
 
-    fun save(latitude: Double, longitude: Double) {
-        save(
+    fun save(
+        latitude: Double,
+        longitude: Double,
+        displayName: String = "Local weather",
+        source: String = SavedLocation.SOURCE_GPS,
+        population: Long = 0L,
+        elevationM: Double = Double.NaN,
+        reliefM: Double = 0.0,
+        countryCode: String? = null
+    ): SavedLocation {
+        val saved =
             SavedLocation(
                 latitude = latitude,
                 longitude = longitude,
                 savedAtEpochMs = System.currentTimeMillis(),
-                source = LocationSource.DEVICE
+                displayName = displayName.ifBlank { "Local weather" },
+                source = source,
+                population = population.coerceAtLeast(0L),
+                elevationM = elevationM,
+                reliefM = reliefM.coerceAtLeast(0.0),
+                countryCode = countryCode
             )
-        )
+        save(saved)
+        return saved
     }
 
     fun save(location: SavedLocation) {
-        prefs.edit()
-            .putLong("lat_bits", java.lang.Double.doubleToRawLongBits(location.latitude))
-            .putLong("lon_bits", java.lang.Double.doubleToRawLongBits(location.longitude))
-            .putLong("saved_at", location.savedAtEpochMs)
-            .putString("display_name", location.displayName)
-            .putString("locality", location.locality)
-            .putString("admin1", location.admin1)
-            .putString("country_code", location.countryCode)
-            .putString("country", location.country)
-            .putString("postal_code", location.postalCode)
-            .putString("elevation_m", location.elevationM?.toString())
-            .putString("population", location.population?.toString())
-            .putString("feature_code", location.featureCode)
-            .putString("source", location.source.name)
-            .apply()
+        val editor =
+            prefs.edit()
+                .putLong(
+                    "lat_bits",
+                    java.lang.Double.doubleToRawLongBits(location.latitude)
+                )
+                .putLong(
+                    "lon_bits",
+                    java.lang.Double.doubleToRawLongBits(location.longitude)
+                )
+                .putLong("saved_at", location.savedAtEpochMs)
+                .putString("display_name", location.displayName)
+                .putString("source", location.source)
+                .putLong("population", location.population)
+                .putLong(
+                    "elevation_bits",
+                    java.lang.Double.doubleToRawLongBits(location.elevationM)
+                )
+                .putLong(
+                    "relief_bits",
+                    java.lang.Double.doubleToRawLongBits(location.reliefM)
+                )
+
+        if (location.countryCode.isNullOrBlank()) {
+            editor.remove("country_code")
+        } else {
+            editor.putString("country_code", location.countryCode)
+        }
+
+        editor.apply()
     }
 
     fun load(): SavedLocation? {
-        if (!prefs.contains("lat_bits") || !prefs.contains("lon_bits")) return null
-
-        val source =
-            prefs.getString("source", null)
-                ?.let { raw ->
-                    runCatching { LocationSource.valueOf(raw) }.getOrNull()
-                }
-                ?: LocationSource.DEVICE
+        if (!prefs.contains("lat_bits") || !prefs.contains("lon_bits")) {
+            return null
+        }
 
         return SavedLocation(
             latitude =
@@ -88,20 +100,34 @@ class LocationStore(context: Context) {
                     prefs.getLong("lon_bits", 0L)
                 ),
             savedAtEpochMs = prefs.getLong("saved_at", 0L),
-            displayName = prefs.getString("display_name", null),
-            locality = prefs.getString("locality", null),
-            admin1 = prefs.getString("admin1", null),
-            countryCode = prefs.getString("country_code", null),
-            country = prefs.getString("country", null),
-            postalCode = prefs.getString("postal_code", null),
+            displayName =
+                prefs.getString("display_name", null)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "Local weather",
+            source =
+                prefs.getString("source", null)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: SavedLocation.SOURCE_GPS,
+            population = prefs.getLong("population", 0L).coerceAtLeast(0L),
             elevationM =
-                prefs.getString("elevation_m", null)
-                    ?.toDoubleOrNull(),
-            population =
-                prefs.getString("population", null)
-                    ?.toLongOrNull(),
-            featureCode = prefs.getString("feature_code", null),
-            source = source
+                if (prefs.contains("elevation_bits")) {
+                    java.lang.Double.longBitsToDouble(
+                        prefs.getLong("elevation_bits", 0L)
+                    )
+                } else {
+                    Double.NaN
+                },
+            reliefM =
+                if (prefs.contains("relief_bits")) {
+                    java.lang.Double.longBitsToDouble(
+                        prefs.getLong("relief_bits", 0L)
+                    ).coerceAtLeast(0.0)
+                } else {
+                    0.0
+                },
+            countryCode =
+                prefs.getString("country_code", null)
+                    ?.takeIf { it.isNotBlank() }
         )
     }
 }
