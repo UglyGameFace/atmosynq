@@ -776,11 +776,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(10), dp(12), dp(10), dp(12))
-            background = roundedBackground(
-                COLOR_CARD_SOFT,
-                18,
-                COLOR_STROKE
-            )
+            background = Color.TRANSPARENT
 
             addView(
                 TextView(this@MainActivity).apply {
@@ -826,7 +822,7 @@ class MainActivity : Activity() {
         }.also { card ->
             card.layoutParams =
                 LinearLayout.LayoutParams(
-                    dp(90),
+                    dp(82),
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 ).apply {
                     marginEnd = dp(8)
@@ -845,8 +841,16 @@ class MainActivity : Activity() {
             dailyContainer.addView(dayRow(day, index))
             if (index < minOf(6, report.daily.lastIndex)) {
                 dailyContainer.addView(
-                    Space(this),
-                    LinearLayout.LayoutParams(1, dp(7))
+                    View(this).apply {
+                        setBackgroundColor(Color.argb(70, 118, 164, 194))
+                    },
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(1)
+                    ).apply {
+                        leftMargin = dp(8)
+                        rightMargin = dp(8)
+                    }
                 )
             }
         }
@@ -863,9 +867,9 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
             background = roundedBackground(
-                COLOR_CARD_SOFT,
-                18,
-                COLOR_STROKE
+                if (label == "Now") COLOR_HOURLY_ACTIVE else COLOR_CARD_SOFT,
+                16,
+                if (label == "Now") COLOR_SEGMENT_STROKE else COLOR_STROKE
             )
 
             addView(
