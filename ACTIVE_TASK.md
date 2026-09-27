@@ -60,7 +60,7 @@ Post-merge Android CI:
 - iOS/iPadOS WidgetKit/Lock Screen/Live Activity work will be a separate platform target after the Android Live Surfaces slice is stable.
 
 ## Validation gate
-Open a PR from `feat/android-live-surfaces` to `main`, run exact-head Android CI, fix any compiler/resource/runtime-contract issues, and only merge after unit tests + debug APK assembly + artifact upload pass.
+PR #2 is open. Exact-head Android CI passed at `1b33aaa081e0e711edf50f68f0895862c2cac42b` in Actions run #23: unit tests passed, debug APK assembly passed, and artifact upload passed. The widget transport bitmap was reduced to 480x280 (~538 KiB raw ARGB) before this green run to stay safely below typical Binder transaction pressure.
 
 ## Remaining risks
 - Real launcher rendering/resize behavior is not proven until installed on an Android device.
@@ -69,5 +69,11 @@ Open a PR from `feat/android-live-surfaces` to `main`, run exact-head Android CI
 - Real-device battery, memory, and bitmap scaling still require validation.
 - The public APK still uses the procedural wallpaper fallback unless original/licensed private scene media is supplied.
 
+## Git / CI state
+- Pull request: #2 — Android live weather home widget
+- Branch: `feat/android-live-surfaces`
+- Last fully green implementation head: `1b33aaa081e0e711edf50f68f0895862c2cac42b`
+- Last green Actions run: #23
+
 ## Next step
-Open the Android Live Surfaces PR, run exact-head CI, repair any build failures, merge only when green, then validate the widget and live wallpaper on-device before starting the Apple WidgetKit target.
+Record the green implementation evidence, let the resulting documentation-only head pass CI, merge PR #2, verify post-merge `main`, then move into Android lock/home wallpaper target behavior and real-device widget validation before starting the Apple WidgetKit target.
