@@ -196,7 +196,7 @@ class CinematicBackdropView(context: Context) : View(context) {
 
         val brightness =
             when {
-                !isDay -> 0.62f
+                !isDay -> 0.78f
                 cloud > 0.82f -> 0.86f
                 cloud > 0.55f -> 0.92f
                 else -> 1.03f
