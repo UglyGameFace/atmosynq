@@ -15,6 +15,10 @@
         android:theme="@style/Theme.Atmosynq.Starting">
 
         <activity
+            android:name=".WorldExploreActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
