@@ -1,165 +1,192 @@
 # Active Task
 
 ## Active task / outcome
-Ship Atmosynq Android v0.8.1 as one coherent modern weather experience: remove legacy visual/UI code that can bleed through the new renderer, keep the live scene interactive, and make every dashboard entry point feel like the same premium product.
+Replace Atmosynq Worlds' distorted backdrop / fake coordinate gameplay with real high-resolution, source-aware interactive scene packs while preserving the premium v0.8.1 dashboard/forecast cleanup.
 
 ## Scope lock
-This remains the single active task.
+This is the single active task.
 
-Do not switch to iOS, Xiaomi rear-display work, live-wallpaper renderer migration, unrelated widget redesign, or a custom Vulkan rewrite until the Samsung v0.8.1 gate is clean.
+Stay inside Atmosynq Android Worlds / dashboard interaction integration until the exact v0.8.2 APK passes CI and Samsung validation.
+
+Do not switch to iOS, Xiaomi rear-display work, unrelated widgets, live-wallpaper renderer migration, or custom Vulkan during this task.
 
 ## Branch / PR
 - branch: `feat/v0.4.1-interactive-weather-portal`
 - draft PR: #12
-- production baseline at task start: `c713b52f62850ffa65441ba09f4377097115c797`
-- pre-Worlds v0.7 head: `47f98f55d29973faa3244683b4f82cd2eebc408f`
-- v0.8 interaction head: `eb6622450dd2db7b3ecbe8b23081217ff9da3971`
-- current target: 0.8.1 / versionCode 17
+- v0.8.1 validated head: `fff0165f43138384ae4871f76626d683f910e416`
+- current target: 0.8.2 / versionCode 18
 - Filament: 1.77.1
 
-## Root cause / findings
+## Device evidence / root cause
 
-### Legacy geometric renderer conflict
-`FilamentWeatherHeroView` still instantiated the old `WeatherHeroView` Canvas renderer underneath the modern scene and explicitly showed it while Filament was initializing or if Filament failed.
+Samsung screenshot showed Weather Trail as a smeared full-screen image with a Daily Eye Spy game that did not correspond to real visible objects.
 
-That obsolete renderer drew:
-- path-based hills / landscape silhouettes
-- oval clouds
-- neon sky ribbons
-- flat water bands
-- circles / lines / primitive precipitation effects
+Confirmed causes:
 
-That is the source of the 2D geometric scenery still appearing behind the new experience.
+### 1. World asset was fundamentally too small
+The only scenic asset in the entire repo was:
+- `app/src/main/assets/backdrops/scene_temperate_town.webp`
+- 512 x 384
+- ~13.8 KB
+- 4:3
 
-### Multiple simultaneous visual layers
-The cinematic path hid Filament primarily through alpha while leaving the TextureView visible. That left unnecessary renderer composition under the cinematic layer.
+WorldExploreActivity stretched/cropped that tiny dashboard backdrop into a tall phone viewport. The image was never suitable for full-screen exploration.
 
-v0.8.1 makes the scene modes mutually exclusive by Android visibility as well as alpha.
+### 2. Five World names were not five real worlds
+CABIN / STORM / CITY / COAST / FOREST were resolver identities, but the cinematic path had only one bundled town image.
 
-### Legacy Android UI
-Forecast detail, scene controls, settings, location selection, location search, privacy information and location results still used stock `AlertDialog` surfaces.
+Changing the title did not change the place.
 
-The white 7-day dialog seen on the Samsung was therefore not a theme bug. It was real legacy UI still in the execution path.
+### 3. Eye Spy was screen-coordinate guessing
+The old game used fixed `xFraction/yFraction` points plus a 58dp hit radius on a touch-stealing overlay.
 
-### Generated 3D scene status
-`tools/build_atmos_scene.py` is separate from the removed Canvas fallback. It still constructs fallback 3D archetypes from generated meshes/primitives for profiles not covered by the cinematic asset path.
+It did not know what a cabin, tree, cloud, shoreline or fireplace was and could drift away from the visible content as the scene moved/scaled.
 
-This is not allowed to bleed under cinematic mode anymore, but it remains a future visual-asset replacement target for mountain / metro / uncovered profiles. Do not blindly remove it before production scene assets replace those coverage paths.
+### 4. Cinematic pinch did not meaningfully zoom the image
+Camera distance changed, but the photographic layer did not share a proper source-space interaction model.
 
-## v0.8.1 implemented changes
+## v0.8.2 implemented architecture
 
-### Retired old 2D weather scene
-- deleted `app/src/main/java/com/uglygameface/atmosynq/render/WeatherHeroView.kt`
-- removed every fallback call from `FilamentWeatherHeroView`
-- replaced the old scene fallback with a neutral atmospheric loading surface
-- graphics-failure / loading states can no longer resurrect old Canvas geometry
+### Semantic scene coordinates
+`WorldExperience.kt` now defines:
+- `NormalizedRegion`
+- region center / contains logic
+- `WorldHotspotAction` (FOCUS / ENTER / OBSERVE)
+- `WorldSceneLayer`
+- scene-specific asset path
+- source dimensions
+- semantic hotspots
 
-### Mutually exclusive render modes
-`FilamentWeatherHeroView.updateSceneMode()` now enforces:
-- cinematic mode: cinematic visible, Filament invisible, loading invisible
-- Filament mode: Filament visible, cinematic invisible, loading invisible
-- loading/failure mode: neutral loading visible, both scene layers invisible
+Eye Spy and ordinary exploration share the same scene-space regions.
 
-### Premium forecast experience
-Added `ForecastActivity`:
-- full-screen Atmosynq design
-- live weather scene hero
-- selected location
-- current temperature and condition
-- NEXT 24 HOURS / 7-DAY OUTLOOK mode switch
-- custom forecast cards
-- precipitation rails
-- wind / sun information
-- animated content-mode transition
-- no stock white Android dialog
+### Source-aware cinematic renderer
+`CinematicBackdropView` now:
+- supports exploration mode
+- maps view taps back into source-image UV coordinates
+- supports focus/zoom on semantic source regions
+- animates focus transitions
+- applies pinch zoom to the cinematic image
+- safely switches scene assets
+- resets transform state when a scene changes
 
-Dashboard forecast CTAs now route into this screen.
+### Renderer interaction bridge
+`FilamentWeatherHeroView` now:
+- exposes explicit cinematic scene asset switching
+- exposes semantic scene-tap callback
+- maps cinematic taps to source coordinates
+- shares pinch/parallax with the cinematic backdrop
+- exposes focus/reset helpers
 
-### Branded Atmosynq sheets
-Added `ui/AtmosynqSheet.kt`.
+### Rebuilt WorldExploreActivity
+Removed the old EyeSpyOverlayView coordinate-circle game.
 
-Replaced stock MainActivity dialogs for:
-- Atmosynq World menu
-- scene controls help
-- quick settings
-- location/privacy
-- location chooser
-- city / ZIP / postal search
-- location result picker
+The World screen now:
+- sends drag / pinch / tap directly through the scene renderer
+- uses semantic scene regions
+- focuses the visible region that was actually tapped
+- provides haptic correct/miss feedback
+- reuses the same regions for Daily Eye Spy
+- uses source-aspect-aware framing rather than forcing a 4:3 image across the full phone
+- disables Daily Eye Spy on Worlds that do not yet have a dedicated semantic asset pack
+- keeps unsupported World modes honest as live 3D rendering rather than fake image gameplay
+- uses stable stored view references rather than child-index layout assumptions
 
-The search sheet uses a branded dark input surface and the result picker is scrollable.
+## Real high-resolution World assets
 
-### Forecast payload contract
-`WeatherReport` now has JSON serialization/deserialization so the forecast Activity receives the same report data rather than refetching and drifting from the dashboard state.
+Three licensed source scenes were imported, normalized to 1440 x 2160 WebP, validated, committed, and the one-shot importer workflow was removed afterward.
 
-Added `WeatherReportJsonTest` for round-trip coverage.
+### Forest / Weather Trail
+- `app/src/main/assets/worlds/forest_mist_lake.webp`
+- 1440 x 2160
+- ~800 KB
+- dedicated forest/lake semantic hotspots
 
-### Version
-- versionName: 0.8.1
-- versionCode: 17
+### Cabin exterior / Fireside Highlands
+- `app/src/main/assets/worlds/cabin_night_exterior.webp`
+- 1440 x 2160
+- ~923 KB
+- cabin / roofline / forest-edge semantic hotspots
+- cabin region is ENTER, not a decorative target
 
-## Validation
+### Cabin interior / Fireside
+- `app/src/main/assets/worlds/cabin_fireplace_interior.webp`
+- 1440 x 2160
+- ~270 KB
+- fireplace / window / hearth semantic hotspots
 
-### Green v0.8 baseline
-Final v0.8 head:
-`eb6622450dd2db7b3ecbe8b23081217ff9da3971`
-- Actions #150 passed
+Asset sources/licensing are recorded in `WORLD_ASSETS.md`.
 
-### Green v0.8.1 code head
-`8e9caaaca9aec29aa50225fc6a7580291f97a1ef`
-- Actions #159 passed
-- production Filament scene generation passed
-- complete unit-test suite passed
-- WeatherReport JSON regression passed
-- Android compilation/resource processing passed
-- debug APK assembly passed
-- artifact upload passed
+## Actual enterable Cabin
+Cabin is now a two-scene World:
+1. Fireside Highlands exterior
+2. tap the cabin semantic region
+3. renderer swaps to the real fireplace interior
+4. interior gets its own title, subtitle and hotspots
+5. Back / OUTSIDE returns to the exterior
 
-## Samsung v0.8.1 device gate
-Do not call the visual task complete until the exact green v0.8.1 APK is exercised on the Samsung.
+Eye Spy remains on the exterior discovery set and does not trap the player inside a different target set.
+
+## Honest support boundary
+Dedicated semantic photographic Worlds currently ship for:
+- FOREST
+- CABIN exterior + interior
+
+STORM / CITY / COAST remain live 3D renderer modes until their own production scene packs are added.
+
+Daily Eye Spy is disabled for those unsupported semantic modes instead of pretending arbitrary screen coordinates are gameplay.
+
+## Regression coverage
+`WorldExperienceResolverTest` now checks:
+- Cabin resolves with its exterior asset
+- Cabin has its fireplace interior asset
+- Cabin has an ENTER hotspot
+- ordinary temperate local profile resolves to the 1440x2160 forest asset
+- semantic regions remain normalized and contain their own centers
+
+## Version
+- versionName: 0.8.2
+- versionCode: 18
+
+## Validation so far
+- semantic interaction head `1ba7d4b10442afe326606c6768fb2c95b112e74e`: Android CI #165 passed
+- later intermediate runs were cancelled by newer branch pushes under the workflow concurrency rule
+- final exact-head CI required after this task-record commit
+
+## Samsung v0.8.2 device gate
+Do not call this task complete until the exact final APK is tested on the Samsung.
 
 Verify:
-1. old 2D geometric Canvas scenery never appears at startup
-2. old 2D scenery never flashes during weather refresh
-3. old 2D scenery never appears after background/resume
-4. cinematic path does not visibly mix with Filament underneath
-5. FULL FORECAST opens the full-screen Atmosynq forecast experience
-6. TIMELINE opens the same experience in hourly mode
-7. hourly / daily mode switching works
-8. no white stock Android forecast dialog remains
-9. Settings uses the branded Atmosynq sheet
-10. Location chooser uses the branded sheet
-11. location text search accepts city / ZIP / postal queries
-12. location results remain selectable and scrollable
-13. scene menu uses the branded sheet
-14. hero -> Atmosynq Worlds still works
-15. Eye Spy still works and persists completion/streak
-16. LIVE / STILL, refresh, widget and wallpaper controls remain functional
-17. no black/blank hero if Filament is delayed
-18. frame pacing, heat and battery remain acceptable
+1. Weather Trail uses the high-resolution forest/lake image, not the old town backdrop
+2. image is sharp and naturally framed rather than smeared/cropped
+3. drag changes the scene without breaking landmark mapping
+4. pinch zoom affects the photographic World
+5. tapping a visible semantic region focuses that actual region
+6. Daily Eye Spy uses the same real regions and no invisible magic circles
+7. misses do not incorrectly count as discoveries
+8. completion / replay / streak still persist
+9. Cabin exterior uses the real cabin asset
+10. tapping the cabin enters the fireplace interior
+11. interior fireplace/window/hearth hotspots respond
+12. Back / OUTSIDE returns to cabin exterior
+13. unsupported Storm / City / Coast do not launch fake Eye Spy
+14. background/resume preserves a valid renderer state
+15. Full Forecast / Timeline premium screens still work
+16. Settings / Location branded sheets still work
+17. LIVE/STILL, refresh, widget and wallpaper controls still work
+18. heat, RAM and frame pacing remain acceptable
 
-## Important boundary
-The 2D Canvas renderer is removed.
-
-The generated 3D fallback scene is still intentionally present for location profiles without production cinematic assets. Its primitive buildings/trees/clouds are not considered final visual quality. Replacing those archetypes with production asset-backed Worlds is the next visual-content phase after this gate.
-
-## Backlog after current gate
-- production cabin interior + fireplace / marshmallow interaction
-- production metro/city scene assets replacing primitive generated buildings
-- production mountain scene assets replacing generated fallback terrain
-- coast / forest scene packs
-- storm photography interaction
-- stone skipping
-- wind / leaf interaction
-- night-only / seasonal discoveries
-- shareable Atmosynq Moments
+## Backlog after this gate
+- dedicated Storm asset pack + lightning photography
+- dedicated City asset pack + rooftop interaction
+- dedicated Coast asset pack + stone skipping
+- richer Forest interaction beyond Eye Spy
+- production fireplace marshmallow-roast interaction
+- original Atmosynq-owned art pipeline to reduce dependence on licensed scene bases
+- migrate more effects from 2.5D composition to specialized GPU/Filament effects where visually justified
 
 ## Merge rule
 PR #12 remains draft.
 
-Do not merge until:
-- final documentation head CI is green
-- the exact v0.8.1 APK passes the Samsung visual/interaction gate
-
-## Next step
-Run CI on the documentation-only head, then install that exact v0.8.1 artifact on the Samsung and validate against the gate above.
+Do not merge and do not claim completion until:
+- final exact-head CI passes
+- exact v0.8.2 APK passes Samsung visual/interaction validation
