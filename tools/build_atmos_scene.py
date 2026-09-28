@@ -237,10 +237,10 @@ def build_scene(output: Path):
         ),
         "window": PBRMaterial(
             name="WindowGlow",
-            baseColorFactor=[36, 50, 64, 255],
-            roughnessFactor=0.20,
-            metallicFactor=0.12,
-            emissiveFactor=[0.12, 0.085, 0.035],
+            baseColorFactor=[34, 45, 58, 255],
+            roughnessFactor=0.24,
+            metallicFactor=0.16,
+            emissiveFactor=[0.0, 0.0, 0.0],
         ),
         "neon_cyan": PBRMaterial(
             name="NeonCyan",
@@ -753,9 +753,9 @@ def build_scene(output: Path):
         pole.apply_translation((x, 1.1, 0.6))
         add(pole, f"StreetPole{i}", materials["metal"])
 
-        light = sphere(0.12, subdivisions=2)
+        light = sphere(0.08, subdivisions=2)
         light.apply_translation((x, 2.18, 0.6))
-        add(light, f"StreetLight{i}", materials["window"])
+        add(light, f"StreetLight{i}", materials["metal"])
 
     cloud_centers = [
         (-5.8, 6.6, -12.5),
