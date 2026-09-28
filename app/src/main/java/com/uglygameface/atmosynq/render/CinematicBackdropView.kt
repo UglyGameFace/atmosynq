@@ -1,5 +1,6 @@
 package com.uglygameface.atmosynq.render
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -12,6 +13,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import kotlin.math.sin
 
@@ -36,6 +38,11 @@ class CinematicBackdropView(context: Context) : View(context) {
     private var elapsedSeconds = 0f
     private var parallaxX = 0f
     private var parallaxY = 0f
+    private var explorationMode = false
+    private var interactiveZoom = 1f
+    private var focusU = 0.5f
+    private var focusV = 0.5f
+    private var focusAnimator: ValueAnimator? = null
 
     init {
         bitmap =
@@ -84,6 +91,93 @@ class CinematicBackdropView(context: Context) : View(context) {
         invalidate()
     }
 
+    fun setExplorationMode(enabled: Boolean) {
+        explorationMode = enabled
+        if (!enabled) {
+            interactiveZoom = 1f
+            focusU = 0.5f
+            focusV = 0.5f
+        }
+        invalidate()
+    }
+
+    fun setInteractiveZoom(zoom: Float) {
+        interactiveZoom =
+            if (explorationMode) {
+                zoom.coerceIn(1f, 1.75f)
+            } else {
+                1f
+            }
+        invalidate()
+    }
+
+    fun mapViewPointToSourceUv(
+        x: Float,
+        y: Float
+    ): Pair<Float, Float>? {
+        if (destination.width() <= 0f || destination.height() <= 0f) {
+            return null
+        }
+
+        val u =
+            (x - destination.left) /
+                destination.width()
+        val v =
+            (y - destination.top) /
+                destination.height()
+
+        if (u !in 0f..1f || v !in 0f..1f) {
+            return null
+        }
+
+        return u to v
+    }
+
+    fun focusOnSourceRegion(
+        centerU: Float,
+        centerV: Float,
+        zoom: Float = 1.34f
+    ) {
+        if (!explorationMode) return
+
+        val targetU = centerU.coerceIn(0f, 1f)
+        val targetV = centerV.coerceIn(0f, 1f)
+        val targetZoom = zoom.coerceIn(1f, 1.75f)
+
+        val startU = focusU
+        val startV = focusV
+        val startZoom = interactiveZoom
+
+        focusAnimator?.cancel()
+        focusAnimator =
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 320L
+                interpolator =
+                    AccelerateDecelerateInterpolator()
+                addUpdateListener { animator ->
+                    val t = animator.animatedValue as Float
+                    focusU = lerp(startU, targetU, t)
+                    focusV = lerp(startV, targetV, t)
+                    interactiveZoom =
+                        lerp(
+                            startZoom,
+                            targetZoom,
+                            t
+                        )
+                    invalidate()
+                }
+                start()
+            }
+    }
+
+    fun resetExplorationFocus() {
+        focusOnSourceRegion(
+            centerU = 0.5f,
+            centerV = 0.5f,
+            zoom = 1f
+        )
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
@@ -93,12 +187,20 @@ class CinematicBackdropView(context: Context) : View(context) {
         val w = width.toFloat()
         val h = height.toFloat()
 
-        // Slight overscan keeps drag/parallax from exposing edges.
+        // Exploration runs inside a source-aspect viewport so the image does not
+        // get brutally cropped just to fill a tall phone screen. Dashboard mode keeps
+        // a little more overscan for subtle parallax.
+        val overscan =
+            if (explorationMode) {
+                1.01f
+            } else {
+                1.08f
+            }
         val scale =
             maxOf(
                 w / source.width.toFloat(),
                 h / source.height.toFloat()
-            ) * 1.08f
+            ) * overscan * interactiveZoom
 
         val drawWidth = source.width * scale
         val drawHeight = source.height * scale
@@ -116,12 +218,27 @@ class CinematicBackdropView(context: Context) : View(context) {
                 0f
             }
 
+        val focusOffsetX =
+            if (explorationMode) {
+                (0.5f - focusU) * drawWidth
+            } else {
+                0f
+            }
+        val focusOffsetY =
+            if (explorationMode) {
+                (0.5f - focusV) * drawHeight
+            } else {
+                0f
+            }
+
         val centerX =
             w * 0.5f +
+                focusOffsetX +
                 parallaxX * w * 0.026f +
                 idleX
         val centerY =
             h * 0.5f +
+                focusOffsetY +
                 parallaxY * h * 0.018f +
                 idleY
 
@@ -228,8 +345,20 @@ class CinematicBackdropView(context: Context) : View(context) {
         return matrix
     }
 
+    private fun lerp(
+        start: Float,
+        end: Float,
+        t: Float
+    ): Float =
+        start + (end - start) * t
+
     companion object {
         private const val TEMPERATE_TOWN_ASSET =
             "backdrops/scene_temperate_town.webp"
+
+        const val SOURCE_WIDTH = 512
+        const val SOURCE_HEIGHT = 384
+        const val MIN_WORLD_WIDTH = 1600
+        const val MIN_WORLD_HEIGHT = 1200
     }
 }
