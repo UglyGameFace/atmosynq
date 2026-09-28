@@ -177,6 +177,13 @@ class MainActivity : Activity() {
                 )
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 adjustViewBounds = true
+                setPadding(dp(8), dp(5), dp(8), dp(5))
+                background =
+                    roundedBackground(
+                        Color.argb(168, 3, 17, 34),
+                        24,
+                        Color.argb(165, 82, 188, 245)
+                    )
                 contentDescription = "Atmosynq"
             }
 
@@ -363,22 +370,17 @@ class MainActivity : Activity() {
             text = "⌖  Select a location"
             textSize = 13.5f
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(Color.rgb(219, 243, 255))
+            setTextColor(Color.rgb(226, 243, 253))
             gravity = Gravity.START
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
-            setPadding(dp(10), dp(5), dp(10), dp(5))
-            background =
-                roundedBackground(
-                    Color.argb(152, 2, 17, 31),
-                    14,
-                    Color.argb(105, 109, 196, 242)
-                )
+            background = null
+            setPadding(0, dp(2), 0, dp(2))
             setShadowLayer(
-                6f,
+                8f,
                 0f,
-                1f,
-                Color.argb(190, 0, 0, 0)
+                2f,
+                Color.argb(220, 0, 0, 0)
             )
         }
         heroPrimary.addView(
