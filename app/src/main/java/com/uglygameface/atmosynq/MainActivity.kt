@@ -419,8 +419,11 @@ class MainActivity : Activity() {
         heroScene =
             FilamentWeatherHeroView(this).apply {
                 contentDescription =
-                    "Current Atmosynq weather scene"
+                    "Current Atmosynq weather scene. Tap to explore."
                 setAnimated(motionStore.isAnimated())
+                setOnClickListener {
+                    openWorldExplorer(startEyeSpy = false)
+                }
             }
 
         currentCard.addView(
@@ -491,13 +494,7 @@ class MainActivity : Activity() {
                 contentDescription =
                     "Live scene controls and information"
                 setOnClickListener {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Live Sky")
-                        .setMessage(
-                            "Drag the atmosphere, pinch to zoom, and tap the scene. Weather effects and scene treatment follow the selected location and current conditions."
-                        )
-                        .setPositiveButton("Done", null)
-                        .show()
+                    showSceneMenu()
                 }
             },
             FrameLayout.LayoutParams(
@@ -969,7 +966,9 @@ class MainActivity : Activity() {
             sectionHeader(
                 "NEXT 12 HOURS",
                 "TIMELINE  ›"
-            ),
+            ) {
+                showHourlyTimeline()
+            },
             matchWrap()
         )
 
@@ -1021,7 +1020,9 @@ class MainActivity : Activity() {
             sectionHeader(
                 "7-DAY OUTLOOK",
                 "FULL FORECAST  ›"
-            ),
+            ) {
+                showFullForecast()
+            },
             matchWrap()
         )
 
@@ -1156,6 +1157,141 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun showSceneMenu() {
+        AlertDialog.Builder(this)
+            .setTitle("Atmosynq World")
+            .setItems(
+                arrayOf(
+                    "Explore this weather world",
+                    "Start Eye Spy",
+                    "Scene controls"
+                )
+            ) { _, which ->
+                when (which) {
+                    0 -> openWorldExplorer(startEyeSpy = false)
+                    1 -> openWorldExplorer(startEyeSpy = true)
+                    2 ->
+                        AlertDialog.Builder(this)
+                            .setTitle("Live Sky controls")
+                            .setMessage(
+                                "Drag horizontally to look around, pinch to zoom, or tap the scene to enter Atmosynq Worlds. Weather and lighting follow the selected location."
+                            )
+                            .setPositiveButton("Done", null)
+                            .show()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun openWorldExplorer(startEyeSpy: Boolean) {
+        val intent =
+            Intent(this, WorldExploreActivity::class.java)
+                .putExtra(
+                    WorldExploreActivity.EXTRA_START_EYE_SPY,
+                    startEyeSpy
+                )
+
+        activeReport?.current?.toJson()?.let { weatherJson ->
+            intent.putExtra(
+                WorldExploreActivity.EXTRA_WEATHER_JSON,
+                weatherJson
+            )
+        }
+
+        startActivity(intent)
+    }
+
+    private fun showHourlyTimeline() {
+        val report = activeReport
+        if (report == null) {
+            status.text = "SYNC WEATHER FIRST"
+            refreshSavedWeather()
+            return
+        }
+
+        val rows =
+            nextHourly(report).joinToString("\n\n") { hour ->
+                val time =
+                    parseLocalDateTime(hour.timeIsoLocal)
+                        ?.format(
+                            DateTimeFormatter.ofPattern(
+                                "EEE h:mm a",
+                                Locale.getDefault()
+                            )
+                        )
+                        ?: hour.timeIsoLocal
+
+                buildString {
+                    append(time)
+                    append("   ")
+                    append(formatTemperature(hour.temperatureC))
+                    append("\n")
+                    append(
+                        WeatherCode.description(
+                            hour.weatherCode
+                        )
+                    )
+                    append("  •  Rain ")
+                    append(hour.precipitationProbabilityPct)
+                    append("%  •  Wind ")
+                    append(formatWind(hour.windSpeedKmh))
+                }
+            }
+
+        AlertDialog.Builder(this)
+            .setTitle("Next 12 Hours")
+            .setMessage(
+                rows.ifBlank {
+                    "No hourly forecast is available yet."
+                }
+            )
+            .setPositiveButton("Done", null)
+            .show()
+    }
+
+    private fun showFullForecast() {
+        val report = activeReport
+        if (report == null) {
+            status.text = "SYNC WEATHER FIRST"
+            refreshSavedWeather()
+            return
+        }
+
+        val rows =
+            report.daily.take(7)
+                .mapIndexed { index, day ->
+                    buildString {
+                        append(dayLabel(day.dateIso, index))
+                        append("   ")
+                        append(
+                            WeatherCode.description(
+                                day.weatherCode
+                            )
+                        )
+                        append("\n")
+                        append("High ")
+                        append(formatTemperature(day.highC))
+                        append("  •  Low ")
+                        append(formatTemperature(day.lowC))
+                        append("  •  Rain ")
+                        append(day.precipitationProbabilityPct)
+                        append("%")
+                    }
+                }
+                .joinToString("\n\n")
+
+        AlertDialog.Builder(this)
+            .setTitle("7-Day Forecast")
+            .setMessage(
+                rows.ifBlank {
+                    "No daily forecast is available yet."
+                }
+            )
+            .setPositiveButton("Done", null)
+            .show()
     }
 
     private fun showQuickSettings() {
@@ -2384,7 +2520,8 @@ class MainActivity : Activity() {
 
     private fun sectionHeader(
         title: String,
-        action: String
+        action: String,
+        onAction: () -> Unit
     ): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -2462,7 +2599,32 @@ class MainActivity : Activity() {
                     letterSpacing = 0.03f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(Color.rgb(88, 210, 255))
-                    gravity = Gravity.END
+                    gravity = Gravity.CENTER
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = "$action for $title"
+                    setPadding(dp(10), dp(8), dp(10), dp(8))
+                    background =
+                        roundedBackground(
+                            Color.argb(80, 34, 123, 166),
+                            14,
+                            Color.argb(120, 77, 202, 255)
+                        )
+                    setOnClickListener {
+                        animate()
+                            .scaleX(0.96f)
+                            .scaleY(0.96f)
+                            .setDuration(60L)
+                            .withEndAction {
+                                animate()
+                                    .scaleX(1f)
+                                    .scaleY(1f)
+                                    .setDuration(100L)
+                                    .start()
+                                onAction()
+                            }
+                            .start()
+                    }
                 },
                 LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
