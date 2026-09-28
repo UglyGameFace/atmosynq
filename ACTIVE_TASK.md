@@ -124,6 +124,15 @@ Pure streak policy has regression coverage for:
 - debug APK assembly passed
 - artifact upload passed
 
+### Green final code/task-record head
+`9858af894993e9bd290e0e26ad03e5c9145b9015`
+- Actions run #149 passed
+- production Filament scene generation passed
+- full unit-test suite passed
+- Android compilation/resource processing passed
+- debug APK assembly passed
+- artifact upload passed
+
 ## Samsung device gate
 The task is not complete until the exact green v0.8 APK is tested on the Samsung.
 
@@ -165,4 +174,4 @@ Do not fake that with low-detail procedural boxes. The next visual-content phase
 PR #12 remains draft. Do not merge and do not call the task complete until final exact-head CI is green and the v0.8 Samsung interaction gate is exercised.
 
 ## Next step
-Run final exact-head CI after this task-record update, inspect the final diff for accidental changes, then use the exact green v0.8 APK for Samsung device validation.
+Verify the final documentation-only head in CI, then install the exact green v0.8 APK on the Samsung and run the interaction/device gate. Keep PR #12 draft until that device evidence is clean.
