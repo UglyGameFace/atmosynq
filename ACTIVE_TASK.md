@@ -182,8 +182,18 @@ The final v0.5.1 head passed:
 - debug APK assembly
 - artifact upload
 
-## v0.5.2 exact-head CI gate
-The final v0.5.2 head must pass production scene generation, unit/regression tests, Kotlin compilation, resource linking, debug APK assembly and artifact upload before device testing.
+## v0.5.2 exact-head CI status
+Exact head: `90f8f92cf2ff6f7c9a7fa1285cc620d447658226`
+
+Android CI run #128 passed on that exact head:
+- production scene generation: success
+- unit/regression tests: success
+- Kotlin compilation: success
+- Android resource processing: success
+- debug APK assembly: success
+- artifact upload: success
+
+The exact green APK is now the Samsung device-test candidate.
 
 ## Samsung device gate after CI
 1. No vertical green / transparency split in the unsynced state.
@@ -208,4 +218,4 @@ The final v0.5.2 head must pass production scene generation, unit/regression tes
 PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green v0.5.1 APK passes the Samsung gate.
 
 ## Next step
-Wait for exact-head v0.5.2 CI. If green, install that exact APK on the Samsung and compare it directly against the approved storm-dashboard mockup, specifically checking the horizontal brand, elimination of floating lights / colored glow, neutral storm palette, unsynced empty state, softer cloud deck and wider cinematic framing.
+Install the exact green v0.5.2 APK from CI run #128 on the Samsung and compare it directly against the approved storm-dashboard mockup, specifically checking the horizontal brand, elimination of floating lights / colored glow, neutral storm palette, unsynced empty state, softer cloud deck and wider cinematic framing.
