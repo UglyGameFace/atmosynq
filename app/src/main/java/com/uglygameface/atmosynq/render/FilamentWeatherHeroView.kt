@@ -2,6 +2,7 @@ package com.uglygameface.atmosynq.render
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -25,11 +26,26 @@ import kotlin.math.sin
 /**
  * GPU weather hero.
  *
- * Filament owns the real 3D/PBR scene. WeatherHeroView remains underneath it as a safety
- * fallback so an unsupported/broken graphics driver never leaves the dashboard blank.
+ * Filament owns the real 3D/PBR scene. Loading / graphics-failure states deliberately use
+ * a neutral atmospheric surface instead of the retired Canvas scene, so obsolete geometric
+ * scenery can never leak through while Filament initializes or recovers.
  */
 class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
-    private val fallback = WeatherHeroView(context)
+    private val loadingSurface =
+        View(context).apply {
+            background =
+                GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(
+                        Color.rgb(5, 20, 38),
+                        Color.rgb(8, 37, 61),
+                        Color.rgb(10, 25, 48),
+                        Color.rgb(2, 9, 19)
+                    )
+                )
+            isClickable = false
+            contentDescription = "Atmosynq scene loading"
+        }
     private val filamentSurface = TextureView(context)
     private val cinematicBackdrop = CinematicBackdropView(context)
     private val fxOverlay = WeatherFxOverlayView(context)
@@ -128,7 +144,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         setBackgroundColor(Color.rgb(3, 12, 28))
 
         addView(
-            fallback,
+            loadingSurface,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT
@@ -168,7 +184,6 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         isClickable = true
         isFocusable = true
-        fallback.setAnimated(animated)
         cinematicBackdrop.setAnimated(animated)
         fxOverlay.setAnimated(animated)
     }
@@ -176,7 +191,6 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     fun setSceneProfile(profile: SceneProfile) {
         sceneProfile = profile
         locationResolved = true
-        fallback.setSceneProfile(profile)
         cinematicBackdrop.setSceneProfile(profile)
         fxOverlay.setSceneProfile(profile)
         viewer?.let {
@@ -189,7 +203,6 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
     fun setWeather(snapshot: WeatherSnapshot?) {
         this.snapshot = snapshot
-        fallback.setWeather(snapshot)
         cinematicBackdrop.setWeather(snapshot)
         fxOverlay.setWeather(snapshot)
         viewer?.let {
@@ -204,8 +217,6 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     fun setAnimated(animated: Boolean) {
         this.animated = animated
 
-        // Only spend Canvas frames while Filament is not yet carrying the scene.
-        fallback.setAnimated(animated && !filamentReady)
         cinematicBackdrop.setAnimated(animated)
         fxOverlay.setAnimated(animated)
 
@@ -361,17 +372,15 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             v
         }.getOrElse {
             filamentSurface.visibility = View.INVISIBLE
-            fallback.visibility = View.VISIBLE
-            fallback.setAnimated(animated)
             null
         }
 
         viewer = created
         if (created != null) {
             filamentSurface.visibility = View.VISIBLE
-            updateSceneMode()
             renderOnce = true
         }
+        updateSceneMode()
     }
 
     private fun configureQuality(v: ModelViewer) {
@@ -577,21 +586,21 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         cinematicActive = shouldUseCinematic
 
         if (shouldUseCinematic) {
+            loadingSurface.visibility = View.INVISIBLE
             cinematicBackdrop.visibility = View.VISIBLE
             cinematicBackdrop.alpha = 1f
             filamentSurface.alpha = 0f
-            fallback.visibility = View.INVISIBLE
         } else {
             cinematicBackdrop.alpha = 0f
             cinematicBackdrop.visibility = View.INVISIBLE
 
             if (filamentReady) {
+                loadingSurface.visibility = View.INVISIBLE
                 filamentSurface.alpha = 1f
                 filamentSurface.visibility = View.VISIBLE
-                fallback.visibility = View.INVISIBLE
             } else {
                 filamentSurface.alpha = 0f
-                fallback.visibility = View.VISIBLE
+                loadingSurface.visibility = View.VISIBLE
             }
         }
     }
