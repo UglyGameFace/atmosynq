@@ -58,12 +58,30 @@ data class EyeSpyTarget(
     val action: WorldHotspotAction = WorldHotspotAction.FOCUS
 )
 
+data class WorldSceneLayer(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val assetPath: String,
+    val sourceWidth: Int = 1440,
+    val sourceHeight: Int = 2160,
+    val hotspots: List<EyeSpyTarget>
+) {
+    init {
+        require(sourceWidth > 0)
+        require(sourceHeight > 0)
+        require(assetPath.isNotBlank())
+    }
+}
+
 data class WorldExperience(
     val kind: WorldKind,
     val title: String,
     val subtitle: String,
     val signatureMoment: String,
-    val eyeSpyTargets: List<EyeSpyTarget>
+    val eyeSpyTargets: List<EyeSpyTarget>,
+    val primaryScene: WorldSceneLayer? = null,
+    val interiorScene: WorldSceneLayer? = null
 )
 
 object WorldExperienceResolver {
@@ -105,41 +123,88 @@ object WorldExperienceResolver {
         }
     }
 
-    private fun cabinWorld(): WorldExperience =
-        WorldExperience(
+    private fun cabinWorld(): WorldExperience {
+        val exteriorTargets =
+            listOf(
+                EyeSpyTarget(
+                    id = "cabin",
+                    label = "the glowing cabin",
+                    hint = "Look for the warm light between the trees.",
+                    detail = "The cabin is enterable. Tap it again outside Eye Spy to go inside.",
+                    region = NormalizedRegion(0.18f, 0.34f, 0.82f, 0.86f),
+                    action = WorldHotspotAction.ENTER
+                ),
+                EyeSpyTarget(
+                    id = "roofline",
+                    label = "the roofline",
+                    hint = "Look above the cabin lights.",
+                    detail = "Snow, rain and wind effects will build around this roofline.",
+                    region = NormalizedRegion(0.22f, 0.27f, 0.78f, 0.52f),
+                    action = WorldHotspotAction.FOCUS
+                ),
+                EyeSpyTarget(
+                    id = "forest-edge",
+                    label = "the dark forest edge",
+                    hint = "Search beside the cabin.",
+                    detail = "The surrounding forest carries wind, fog and precipitation depth.",
+                    region = NormalizedRegion(0.02f, 0.24f, 0.34f, 0.82f),
+                    action = WorldHotspotAction.FOCUS
+                )
+            )
+
+        val interiorTargets =
+            listOf(
+                EyeSpyTarget(
+                    id = "fireplace",
+                    label = "the fireplace",
+                    hint = "Follow the warmest light in the room.",
+                    detail = "The fireplace is the cabin's signature interaction point.",
+                    region = NormalizedRegion(0.56f, 0.30f, 0.98f, 0.88f),
+                    action = WorldHotspotAction.OBSERVE
+                ),
+                EyeSpyTarget(
+                    id = "window",
+                    label = "the cabin window",
+                    hint = "Look toward the cooler light.",
+                    detail = "The outside weather remains visible from inside the cabin.",
+                    region = NormalizedRegion(0.00f, 0.18f, 0.46f, 0.62f),
+                    action = WorldHotspotAction.FOCUS
+                ),
+                EyeSpyTarget(
+                    id = "hearth",
+                    label = "the hearth",
+                    hint = "Look below the fireplace glow.",
+                    detail = "This is where the marshmallow interaction will anchor.",
+                    region = NormalizedRegion(0.54f, 0.58f, 0.98f, 0.98f),
+                    action = WorldHotspotAction.FOCUS
+                )
+            )
+
+        return WorldExperience(
             kind = WorldKind.CABIN,
             title = "Fireside Highlands",
             subtitle =
-                "A warm retreat inside the same living weather system.",
-            signatureMoment = "Cabin fireside • marshmallow roast",
-            eyeSpyTargets =
-                listOf(
-                    EyeSpyTarget(
-                        id = "ridge",
-                        label = "the high ridge",
-                        hint = "Look above the horizon.",
-                        detail = "The ridge is the natural overlook for this world.",
-                        region = NormalizedRegion(0.1f, 0.18f, 0.48f, 0.42f),
-                        action = WorldHotspotAction.FOCUS
-                    ),
-                    EyeSpyTarget(
-                        id = "cloud",
-                        label = "the wandering cloud",
-                        hint = "Search the upper sky.",
-                        detail = "Cloud structure shifts with the live weather state.",
-                        region = NormalizedRegion(0.52f, 0.08f, 0.84f, 0.34f),
-                        action = WorldHotspotAction.FOCUS
-                    ),
-                    EyeSpyTarget(
-                        id = "warm-light",
-                        label = "the warm light",
-                        hint = "Look low in the shelter line.",
-                        detail = "A warm shelter light marks the cabin entry point.",
-                        region = NormalizedRegion(0.52f, 0.48f, 0.77f, 0.74f),
-                        action = WorldHotspotAction.ENTER
-                    )
+                "A real cabin exterior that opens into a warm fireplace interior.",
+            signatureMoment = "Enter cabin • fireside interaction",
+            eyeSpyTargets = exteriorTargets,
+            primaryScene =
+                WorldSceneLayer(
+                    id = "cabin-exterior",
+                    title = "Fireside Highlands",
+                    subtitle = "Tap the glowing cabin to step inside.",
+                    assetPath = "worlds/cabin_night_exterior.webp",
+                    hotspots = exteriorTargets
+                ),
+            interiorScene =
+                WorldSceneLayer(
+                    id = "cabin-interior",
+                    title = "Fireside",
+                    subtitle = "Warm up by the fire while the weather stays alive outside.",
+                    assetPath = "worlds/cabin_fireplace_interior.webp",
+                    hotspots = interiorTargets
                 )
         )
+    }
 
     private fun stormWorld(): WorldExperience =
         WorldExperience(
@@ -249,39 +314,51 @@ object WorldExperienceResolver {
                 )
         )
 
-    private fun forestWorld(): WorldExperience =
-        WorldExperience(
+    private fun forestWorld(): WorldExperience {
+        val targets =
+            listOf(
+                EyeSpyTarget(
+                    id = "forest-wall",
+                    label = "the misty tree wall",
+                    hint = "Look where the trees disappear into fog.",
+                    detail = "Fog depth and wind effects build through this forest layer.",
+                    region = NormalizedRegion(0.00f, 0.08f, 0.56f, 0.74f),
+                    action = WorldHotspotAction.FOCUS
+                ),
+                EyeSpyTarget(
+                    id = "lake-reflection",
+                    label = "the lake reflection",
+                    hint = "Search the lower half of the scene.",
+                    detail = "The lake becomes the visual surface for rain, wind and reflected light.",
+                    region = NormalizedRegion(0.10f, 0.55f, 0.92f, 0.98f),
+                    action = WorldHotspotAction.FOCUS
+                ),
+                EyeSpyTarget(
+                    id = "far-shore",
+                    label = "the far shoreline",
+                    hint = "Look through the mist across the water.",
+                    detail = "The far shore carries visibility and incoming-weather depth.",
+                    region = NormalizedRegion(0.34f, 0.34f, 0.96f, 0.66f),
+                    action = WorldHotspotAction.FOCUS
+                )
+            )
+
+        return WorldExperience(
             kind = WorldKind.FOREST,
             title = "Weather Trail",
             subtitle =
-                "Step past the dashboard and explore the atmosphere.",
-            signatureMoment = "Wind trail • hidden woodland details",
-            eyeSpyTargets =
-                listOf(
-                    EyeSpyTarget(
-                        id = "tree-line",
-                        label = "the tree line",
-                        hint = "Look along the lower-left edge.",
-                        detail = "The tree line is the main wind-reactive foreground zone.",
-                        region = NormalizedRegion(0.03f, 0.46f, 0.46f, 0.84f),
-                        action = WorldHotspotAction.FOCUS
-                    ),
-                    EyeSpyTarget(
-                        id = "cloud",
-                        label = "the small cloud",
-                        hint = "Search the upper half.",
-                        detail = "Cloud cover and brightness follow the active weather report.",
-                        region = NormalizedRegion(0.48f, 0.06f, 0.82f, 0.36f),
-                        action = WorldHotspotAction.FOCUS
-                    ),
-                    EyeSpyTarget(
-                        id = "horizon",
-                        label = "the far horizon",
-                        hint = "Look past the foreground.",
-                        detail = "The distant horizon carries visibility, fog and incoming weather.",
-                        region = NormalizedRegion(0.52f, 0.34f, 0.96f, 0.6f),
-                        action = WorldHotspotAction.FOCUS
-                    )
+                "Explore a high-resolution mist forest and lake that reacts to the live atmosphere.",
+            signatureMoment = "Misty trail • lake reflections • hidden discoveries",
+            eyeSpyTargets = targets,
+            primaryScene =
+                WorldSceneLayer(
+                    id = "forest-lake",
+                    title = "Weather Trail",
+                    subtitle = "Tap real landmarks, drag the scene and pinch to inspect the mist.",
+                    assetPath = "worlds/forest_mist_lake.webp",
+                    hotspots = targets
                 )
         )
+    }
+
 }
