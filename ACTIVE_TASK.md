@@ -1,91 +1,58 @@
 # Active Task
 
-## Active task / outcome
-Finish the Android Atmosynq dashboard visual overhaul: push Filament hard enough to read as a believable living weather world, match the approved dashboard mockup more closely, and keep worldwide city / postal-code support intact.
+## Active outcome
+Finish the Android Atmosynq dashboard before the cutoff with a believable cinematic weather hero, mockup-aligned UI, and worldwide city / postal-code support.
 
 ## Scope lock
-This is still one continuous task. Do not switch to iOS, Xiaomi rear-display work, unrelated widget redesign, live-wallpaper renderer migration, or another project until this dashboard clears the Samsung visual gate.
+This remains the single active task. Do not switch to iOS, Xiaomi rear-display work, unrelated widgets, live-wallpaper renderer migration, or another project until the Android dashboard clears the Samsung visual gate.
 
 ## Branch / PR
 - branch: `feat/v0.4.1-interactive-weather-portal`
 - draft PR: #12
-- base production main at task start: `c713b52f62850ffa65441ba09f4377097115c797`
-
-## Device-tested checkpoints
-
-### v0.4.2
-Worldwide location selection and terrain classification worked, but the 6 KB prototype GLB still looked like basic geometry.
-
-### v0.5.0
-Exact green head: `6270a2418c4d8107984d2bc06b79b64ae7db2378`
-CI run #113: success.
-
-Samsung screenshots proved the production scene generator was actually being used and the dashboard hierarchy improved, but the visual gate still failed:
-- cloud clusters looked like giant white marshmallow geometry
-- bloom / emissive lighting created radioactive white hotspots
-- cyan / purple / green accents overwhelmed the weather scene
-- the unsynced state showed an ugly vertical color / transparency artifact
-- houses still read too much like repeated boxes
-- the no-location state rendered far too much environment detail
-- hero location text could wash out against the scene
-- top UI still consumed more space than the approved mockup
-
-The result was an improvement, not a finished product.
-
-## Current target
-- versionCode: 13
-- versionName: 0.5.2
+- production baseline at task start: `c713b52f62850ffa65441ba09f4377097115c797`
+- current target: 0.6.0 / versionCode 14
 - Filament: 1.77.1
 
-## v0.5.2 Samsung findings and root-cause fixes
+## Why v0.6.0 exists
+Samsung testing made the remaining problem undeniable.
 
-The exact green v0.5.1 Samsung screenshots still failed the visual gate. New device evidence showed:
-- bright lamp heads still read as floating lights
-- red / green / white glow was still overpowering the actual weather scene
-- the top header used a square icon plus plain Android text instead of the approved Atmosynq horizontal wordmark
-- the house layer still dominated too much of the hero
-- the unsynced state still showed road / water geometry despite having no selected place
-- cloud geometry still read as synthetic blobs instead of the mockup's broad storm deck
-- the overall color treatment still looked like an effects demo rather than the approved cinematic weather dashboard
+The generated Filament environment pipeline technically worked, but the actual phone still exposed:
+- dark synthetic-looking terrain
+- bright vertical / floating-looking geometry
+- toy-scene depth
+- low-believability vegetation and settlement detail
+- a hero that still looked like a renderer demo instead of the approved cinematic mockup
 
-These are treated as failed device validation, not subjective polish.
+The UI below the hero was much closer, and the horizontal Atmosynq brand was materially better, but the main visual still failed.
 
-### v0.5.2 direct corrections
-- extracted the approved horizontal Atmosynq logo from the existing brand system and added it as a real app drawable
-- removed the duplicate plain-text Atmosynq header treatment
-- hid the entire street-pole / lamp-head layer in runtime scene composition
-- removed emissive energy from generated window / lamp material
-- disabled bloom completely until scene lighting is trustworthy
-- replaced cyan / purple / green aurora wash with neutral blue-gray atmosphere
-- added a soft radial cloud-deck overlay so overcast reads as a broad sky mass rather than floating 3D marshmallows
-- pulled the camera back and increased focal length so the environment reads as a landscape instead of toy houses in the user's face
-- reduced town / local house scale substantially
-- no-location state now hides ground, wet road, water, road marks, terrain, settlement, vegetation, streetlights and clouds
-- unresolved state therefore shows only a subdued atmospheric sky until the user actually chooses a place
+The root cause is no longer "not enough post-processing." The generated procedural 3D environment itself is not photoreal enough to be the primary visual layer on a phone-sized hero.
 
-## v0.5.1 root-cause fixes
+## v0.6.0 architecture pivot
+Atmosynq now uses a hybrid visual system instead of insisting that weak generated geometry be visible everywhere.
 
-### PBR materials
-The generated GLB now avoids large alpha-blended environment surfaces that were producing unstable / fake-looking composition:
-- building glass is opaque dark reflective PBR instead of a large alpha-blended slab
-- water is opaque glossy PBR instead of alpha-blended
-- cloud material is opaque muted gray rather than bright translucent white
-- emissive window energy is heavily reduced
-- sun emissive energy is reduced
-- metal palette is darkened
+### CinematicBackdropView
+New:
+`app/src/main/java/com/uglygameface/atmosynq/render/CinematicBackdropView.kt`
 
-### Environment geometry
-- cloud clusters are much smaller, flatter and farther from the camera
-- clouds use more but smaller lobes so they read like distant layers rather than giant blobs
-- houses now vary width, depth, story count and roof pitch
-- houses gain attached garage / porch masses
-- houses gain doors
-- houses gain optional chimneys
-- facade material varies between siding / brick / stucco
-- house windows use dark reflective glass instead of always-on bright emissive material
+For supported lowland town / local / temperate city profiles:
+- a real cinematic raster environment is the primary visual layer
+- the image is center-cropped with overscan
+- drag interaction creates parallax
+- Animated mode adds extremely slow camera drift
+- weather/time modifies saturation, exposure and cool/warm balance
+- a controlled top/bottom data scrim protects the weather text
+- a left-side readability gradient matches the approved mockup hierarchy
 
-### Filament calibration
-Filament still uses the high-end mobile stack, but effects are now calibrated for realism instead of simply being enabled at maximum visual strength:
+The first production backdrop is:
+`app/src/main/assets/backdrops/scene_temperate_town.webp`
+
+It is a cinematic wooded lowland town / water scene suited to the Shelton / Connecticut device-test profile.
+
+The asset is intentionally small enough for mobile delivery while still being photographic rather than procedural geometry.
+
+### FilamentWeatherHeroView
+Filament remains in the product and continues to own the genuinely useful high-end paths:
+- 3D / PBR rendering for profiles not yet covered by a cinematic backdrop
 - HDR
 - PCSS shadows
 - TAA
@@ -93,129 +60,113 @@ Filament still uses the high-end mobile stack, but effects are now calibrated fo
 - ULTRA AO + bent normals
 - SSR
 - refraction
-- native weather fog
+- native fog
 - dynamic resolution
-- ULTRA color-grading LUT
-- luminance scaling
-- gamut mapping
-- restrained saturation / vibrance
-- cooler white balance
-- darker exposure
-- restrained bloom
-- lens flare / starburst / chromatic aberration disabled after device evidence showed they were contaminating the image
+- color grading
+- interactive camera / pinch / drag infrastructure
 
-"Push Filament" means use the engine's serious capabilities intelligently, not turn every post effect knob until the scene glows like a broken arcade cabinet.
+For a profile covered by the cinematic layer:
+- the cinematic backdrop is shown above the TextureView
+- the bad procedural Filament settlement is hidden rather than allowed to contaminate the photo
+- WeatherFxOverlayView still supplies live rain, snow, fog, wind, thunder and touch response
+- drag / pinch / tap remain active
+- Filament is not deleted, because it remains the engine for profiles / features where it adds visual value
 
-### Weather / decorative scene state
-- 3D cyan / purple ribbons remain in the environment kit but are hidden from normal rendering
-- Canvas atmospheric ribbons are reduced to near-invisible during daytime
-- reflective weather streaks are much subtler
-- clouds scale with cloud cover and move more slowly
-- no-location / unsynced state hides clouds and place-specific 3D groups
-- sun is hidden when heavily overcast and when no weather is loaded
-- no-location state no longer pretends it knows what the user's environment looks like
+This is a quality-first decision. "Push Filament to the max" does not mean forcing visibly fake meshes to remain on screen merely because they are 3D.
 
-### UI / UX calibration
-- horizontal Atmosynq brand header is smaller
-- top header consumes less vertical space
-- tagline is smaller
-- Animated / Static selector is slightly tighter
-- hero location is now a dark glass pill with ellipsis support
-- hero temperature / condition / high-low text gains controlled text shadow
-- hero top/bottom scrim is stronger where data is rendered
-- hero card is slightly shorter so more useful content fits above the fold
-- settings, sync refresh, location, widget and wallpaper actions remain directly available
-
-## Production scene generator
-CI still generates the GLB from:
-- `tools/build_atmos_scene.py`
-- `tools/scene-requirements.txt`
-
-The generator must still emit a GLB larger than 500 KB and contain required production nodes/materials. The old 6 KB prototype cannot silently return.
-
-## Global place behavior retained
-- city search worldwide
-- city + state/province/country
-- postal / ZIP search
-- manual search without location permission
+## Worldwide location support remains
+Location behavior is unchanged:
+- search any city
+- search city + state/province/country
+- search ZIP / postal code
+- manual search requires no location permission
 - optional approximate current location
-- place label persistence
-- terrain relief sampling
-- settlement / terrain / latitude scene classification
-- flat places suppress mountains
-- metro / city / town / local choose different scene groups
+- resolved place name shown in the hero
+- local terrain relief sampling
+- settlement / terrain / latitude classification
+- saved place persistence
 
-## Existing product behavior retained
+The global scene classifier is still the routing layer. Cinematic backdrop coverage can expand by scene archetype without creating a city whitelist.
+
+## Existing mockup/UI corrections retained
+- safe system-bar spacing
+- approved horizontal Atmosynq brand treatment
+- settings control
+- centered tagline
+- glass Animated / Static selector
+- tappable sync pill
+- large cinematic hero
+- readable location text
+- larger temperature / condition hierarchy
+- translucent metrics panel
+- gradient live-wallpaper CTA
+- location / widget actions
+- forecast section headers
+- privacy explanation moved out of the main dashboard
+
+## New forecast cleanup
+The 7-day rows now reserve a fixed single-line day column so `Tomorrow` cannot split into `Tomorro / w`.
+Condition text is a single ellipsized line so the row stays aligned.
+
+## Regression protection
+New test:
+`CinematicBackdropAssetTest.kt`
+
+CI now rejects a missing or suspiciously tiny cinematic backdrop and verifies the RIFF / WEBP signature.
+
+Existing tests continue to cover:
+- production GLB integrity / size / material nodes
+- global geocoding
+- postal-code metadata
+- location scene classification
+- terrain relief
+- weather
+- wallpaper behavior
+
+## Preserved behavior
+Must remain intact:
 - Open-Meteo weather
 - hourly forecast
 - 7-day forecast
-- Animated / Static preference
-- drag / pinch / tap scene interaction
+- Animated / Static
+- drag / pinch / tap
+- global city / postal search
+- approximate current location
 - widget pinning
 - wallpaper picker
-- current live wallpaper renderer
+- live wallpaper renderer
 - old saved-location compatibility
 - Filament fallback
 
-## Previous exact-head CI status
-Exact v0.5.1 head: `5451de9f91d30633b143984b3257f1f9198fec53`
-
-Android CI run #121 passed:
-- production scene generation: success
-- unit/regression tests: success
-- Kotlin compilation: success
-- Android resource processing: success
-- debug APK assembly: success
-- artifact upload: success
-
-Generated production GLB in CI: 1,325,312 bytes / 279 geometries.
-
-The final v0.5.1 head passed:
-- production scene generation
-- global geocoder tests
-- location scene / terrain tests
-- weather tests
-- wallpaper tests
-- production GLB size / node / material tests
+## Exact-head CI gate
+The final 0.6.0 head must pass:
+- cinematic backdrop asset test
+- production Filament scene generation
+- unit / regression tests
 - Kotlin compilation
-- Android resource linking
+- Android resource processing
 - debug APK assembly
 - artifact upload
 
-## v0.5.2 exact-head CI status
-Exact head: `90f8f92cf2ff6f7c9a7fa1285cc620d447658226`
-
-Android CI run #128 passed on that exact head:
-- production scene generation: success
-- unit/regression tests: success
-- Kotlin compilation: success
-- Android resource processing: success
-- debug APK assembly: success
-- artifact upload: success
-
-The exact green APK is now the Samsung device-test candidate.
-
-## Samsung device gate after CI
-1. No vertical green / transparency split in the unsynced state.
-2. Unsynced hero is subdued and does not show fake location-specific scenery.
-3. Synced overcast scene has no giant white marshmallow clouds.
-4. White emissive hotspots no longer dominate.
-5. Neon cyan / magenta / green accents are atmospheric, not the subject.
-6. Shelton / similar town scene has more believable house variation.
-7. Flat places still have no mountains.
-8. Metro and mountain locations still visibly differ.
-9. Location pill is readable over every sky condition.
-10. Top UI is fully below system bars and more compact.
-11. Weather data hierarchy still matches the approved mockup direction.
-12. Rain / snow / fog / thunder / wind and day-night behavior remain correct.
-13. Drag / pinch / tap and vertical dashboard scrolling remain stable.
-14. Animated / Static works.
-15. Forecasts, location search, widget and wallpaper actions work.
-16. Background/resume remains stable.
-17. Frame pacing, heat and battery are acceptable.
+## Samsung visual gate
+Install the exact green 0.6.0 APK and verify:
+1. Shelton no longer shows the dark procedural toy settlement.
+2. The hero reads as a cinematic wooded New England / lowland scene.
+3. No floating lights / vertical white geometry.
+4. No giant mesh clouds.
+5. No radioactive red / green / magenta bloom.
+6. Night remains visible rather than becoming a black card.
+7. Weather FX layer correctly adds live rain / snow / fog / thunder.
+8. Location text and weather hierarchy remain readable.
+9. Drag creates believable parallax and does not break vertical scrolling.
+10. Static mode stops idle scene motion.
+11. `Tomorrow` stays on one line.
+12. Forecast / location / widget / wallpaper controls still work.
+13. Background/resume is stable.
+14. Frame pacing / heat / battery remain acceptable.
 
 ## Merge rule
-PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green v0.5.1 APK passes the Samsung gate.
+PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green 0.6.0 APK passes the Samsung visual gate.
 
 ## Next step
-Install the exact green v0.5.2 APK from CI run #128 on the Samsung and compare it directly against the approved storm-dashboard mockup, specifically checking the horizontal brand, elimination of floating lights / colored glow, neutral storm palette, unsynced empty state, softer cloud deck and wider cinematic framing.
+Run exact-head CI on the 0.6.0 hybrid renderer. If green, install that exact APK immediately and compare it against the latest failed Samsung screenshot and the approved Atmosynq mockup.
