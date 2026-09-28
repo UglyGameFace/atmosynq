@@ -1,177 +1,165 @@
 # Active Task
 
 ## Active task / outcome
-Turn the Atmosynq Android dashboard into an actually interactive weather product: repair decorative/dead controls, make the live scene enterable, and establish Atmosynq Worlds as the retention layer for weather-reactive exploration.
+Ship Atmosynq Android v0.8.1 as one coherent modern weather experience: remove legacy visual/UI code that can bleed through the new renderer, keep the live scene interactive, and make every dashboard entry point feel like the same premium product.
 
 ## Scope lock
-This is the single active task. Keep work inside the Android dashboard / Atmosynq Worlds interaction path until the exact-head build and Samsung device gate pass.
+This remains the single active task.
 
-Do not switch to iOS, Xiaomi rear-display work, live-wallpaper renderer migration, unrelated widget redesign, or a custom Vulkan rewrite during this task.
+Do not switch to iOS, Xiaomi rear-display work, live-wallpaper renderer migration, unrelated widget redesign, or a custom Vulkan rewrite until the Samsung v0.8.1 gate is clean.
 
 ## Branch / PR
 - branch: `feat/v0.4.1-interactive-weather-portal`
 - draft PR: #12
 - production baseline at task start: `c713b52f62850ffa65441ba09f4377097115c797`
 - pre-Worlds v0.7 head: `47f98f55d29973faa3244683b4f82cd2eebc408f`
-- current target: 0.8.0 / versionCode 16
+- v0.8 interaction head: `eb6622450dd2db7b3ecbe8b23081217ff9da3971`
+- current target: 0.8.1 / versionCode 17
 - Filament: 1.77.1
 
 ## Root cause / findings
-The v0.7 Atmosphere Deck looked interactive in several places without having complete action paths.
 
-Confirmed defects:
-- `TIMELINE ›` was plain decorative TextView content with no click handler.
-- `FULL FORECAST ›` was plain decorative TextView content with no click handler.
-- `FilamentWeatherHeroView` detected scene taps, but `performClick()` only produced the existing touch pulse; MainActivity attached no scene-navigation action.
-- the top-right Live Sky control only explained interaction in a dialog rather than opening an interactive experience.
+### Legacy geometric renderer conflict
+`FilamentWeatherHeroView` still instantiated the old `WeatherHeroView` Canvas renderer underneath the modern scene and explicitly showed it while Filament was initializing or if Filament failed.
 
-Existing controls that already had real handlers were preserved:
-- LIVE / STILL
-- sync / refresh
-- settings
-- location
-- widget
-- live wallpaper
+That obsolete renderer drew:
+- path-based hills / landscape silhouettes
+- oval clouds
+- neon sky ribbons
+- flat water bands
+- circles / lines / primitive precipitation effects
 
-## Implemented v0.8 interaction repair
+That is the source of the 2D geometric scenery still appearing behind the new experience.
 
-### Real forecast actions
-The shared forecast header now requires an action callback.
+### Multiple simultaneous visual layers
+The cinematic path hid Filament primarily through alpha while leaving the TextureView visible. That left unnecessary renderer composition under the cinematic layer.
 
-- `TIMELINE ›` opens a real 12-hour forecast view with time, condition, temperature, rain probability and wind.
-- `FULL FORECAST ›` opens a real 7-day detail view with condition, high, low and rain probability.
-- unsynced forecast actions request/refresh weather instead of silently doing nothing.
+v0.8.1 makes the scene modes mutually exclusive by Android visibility as well as alpha.
 
-### Enterable live scene
-The dashboard weather scene is now a real doorway:
-- tapping the hero launches `WorldExploreActivity`
-- current weather is transferred into the world as serialized `WeatherSnapshot`
-- saved location is resolved into the same `SceneProfile`
-- the same `FilamentWeatherHeroView` is reused full-screen
-- drag and pinch remain available inside the world
-- the top-right scene menu offers Explore, Eye Spy, and actual controls help
+### Legacy Android UI
+Forecast detail, scene controls, settings, location selection, location search, privacy information and location results still used stock `AlertDialog` surfaces.
 
-### Atmosynq Worlds foundation
-`WorldExperienceResolver` maps the current weather + location profile into a world identity:
+The white 7-day dialog seen on the Samsung was therefore not a theme bug. It was real legacy UI still in the execution path.
 
-- CABIN / Fireside Highlands
-- STORM / Storm Watch
-- CITY / Skyline Drift
-- COAST / Weather Pier
-- FOREST / Weather Trail
+### Generated 3D scene status
+`tools/build_atmos_scene.py` is separate from the removed Canvas fallback. It still constructs fallback 3D archetypes from generated meshes/primitives for profiles not covered by the cinematic asset path.
 
-World selection reacts to:
-- snow
-- precipitation / thunderstorms
-- settlement size
-- terrain
-- latitude band
+This is not allowed to bleed under cinematic mode anymore, but it remains a future visual-asset replacement target for mountain / metro / uncovered profiles. Do not blindly remove it before production scene assets replace those coverage paths.
 
-This is the stable product contract for later asset-backed scene-specific interactions. It avoids hardcoding feature logic into MainActivity.
+## v0.8.1 implemented changes
 
-### Daily Eye Spy
-The first repeatable world activity is live:
-- each world owns scene-appropriate hidden targets
-- targets use normalized coordinates so the interaction scales across phone sizes
-- targets remain invisible; the UI does not point at the answer
-- correct / miss feedback appears at the tapped position
-- target order rotates by local world date
-- Eye Spy can launch directly from the dashboard scene menu
+### Retired old 2D weather scene
+- deleted `app/src/main/java/com/uglygameface/atmosynq/render/WeatherHeroView.kt`
+- removed every fallback call from `FilamentWeatherHeroView`
+- replaced the old scene fallback with a neutral atmospheric loading surface
+- graphics-failure / loading states can no longer resurrect old Canvas geometry
 
-### Daily progress / retention
-`WorldProgressStore` persists:
-- daily completion per world type
-- replay state
-- consecutive-day world streak
+### Mutually exclusive render modes
+`FilamentWeatherHeroView.updateSceneMode()` now enforces:
+- cinematic mode: cinematic visible, Filament invisible, loading invisible
+- Filament mode: Filament visible, cinematic invisible, loading invisible
+- loading/failure mode: neutral loading visible, both scene layers invisible
 
-Multiple world types can be completed on the same date without clobbering each other.
+### Premium forecast experience
+Added `ForecastActivity`:
+- full-screen Atmosynq design
+- live weather scene hero
+- selected location
+- current temperature and condition
+- NEXT 24 HOURS / 7-DAY OUTLOOK mode switch
+- custom forecast cards
+- precipitation rails
+- wind / sun information
+- animated content-mode transition
+- no stock white Android dialog
 
-Pure streak policy has regression coverage for:
-- consecutive-day increment
-- skipped-day reset
-- duplicate same-day completion
+Dashboard forecast CTAs now route into this screen.
 
-## Files added
-- `app/src/main/java/com/uglygameface/atmosynq/WorldExploreActivity.kt`
-- `app/src/main/java/com/uglygameface/atmosynq/worlds/WorldExperience.kt`
-- `app/src/main/java/com/uglygameface/atmosynq/worlds/WorldProgressStore.kt`
-- `app/src/test/java/com/uglygameface/atmosynq/worlds/WorldExperienceResolverTest.kt`
-- `app/src/test/java/com/uglygameface/atmosynq/worlds/WorldStreakPolicyTest.kt`
+### Branded Atmosynq sheets
+Added `ui/AtmosynqSheet.kt`.
 
-## Files changed
-- `app/src/main/java/com/uglygameface/atmosynq/MainActivity.kt`
-- `app/src/main/AndroidManifest.xml`
-- `app/build.gradle.kts`
+Replaced stock MainActivity dialogs for:
+- Atmosynq World menu
+- scene controls help
+- quick settings
+- location/privacy
+- location chooser
+- city / ZIP / postal search
+- location result picker
 
-## Validation so far
-### Green intermediate head
-`034b42eea82e3fb2fe8622639d0cb3c95335fcd5`
-- Actions run #145 passed
+The search sheet uses a branded dark input surface and the result picker is scrollable.
+
+### Forecast payload contract
+`WeatherReport` now has JSON serialization/deserialization so the forecast Activity receives the same report data rather than refetching and drifting from the dashboard state.
+
+Added `WeatherReportJsonTest` for round-trip coverage.
+
+### Version
+- versionName: 0.8.1
+- versionCode: 17
+
+## Validation
+
+### Green v0.8 baseline
+Final v0.8 head:
+`eb6622450dd2db7b3ecbe8b23081217ff9da3971`
+- Actions #150 passed
+
+### Green v0.8.1 code head
+`8e9caaaca9aec29aa50225fc6a7580291f97a1ef`
+- Actions #159 passed
 - production Filament scene generation passed
-- unit tests passed
+- complete unit-test suite passed
+- WeatherReport JSON regression passed
 - Android compilation/resource processing passed
 - debug APK assembly passed
 - artifact upload passed
 
-### Green interaction + daily progress head
-`9b7ccf39d8e30c19c3aa931a2e67ddefe64ab2bc`
-- Actions run #148 passed
-- production Filament scene generation passed
-- World resolver tests passed
-- streak policy tests passed
-- full unit-test suite passed
-- Android compilation/resource processing passed
-- debug APK assembly passed
-- artifact upload passed
-
-### Green final code/task-record head
-`9858af894993e9bd290e0e26ad03e5c9145b9015`
-- Actions run #149 passed
-- production Filament scene generation passed
-- full unit-test suite passed
-- Android compilation/resource processing passed
-- debug APK assembly passed
-- artifact upload passed
-
-## Samsung device gate
-The task is not complete until the exact green v0.8 APK is tested on the Samsung.
+## Samsung v0.8.1 device gate
+Do not call the visual task complete until the exact green v0.8.1 APK is exercised on the Samsung.
 
 Verify:
-1. tapping the hero opens Atmosynq Worlds
-2. full-screen scene renders rather than black/blank/fallback failure
-3. drag and pinch still work inside the world
-4. back returns cleanly to dashboard
-5. scene menu Explore opens the world
-6. scene menu Start Eye Spy opens the world with the challenge active
-7. Eye Spy does not reveal target positions
-8. correct and miss taps give visible feedback
-9. completion persists after leaving/re-entering
-10. replay does not increase the same-day streak
-11. next-day completion advances the streak
-12. `TIMELINE ›` opens real hourly detail
-13. `FULL FORECAST ›` opens real daily detail
-14. location / widget / wallpaper / motion / refresh controls still work
-15. background/resume is stable
-16. heat, frame pacing and battery remain acceptable
+1. old 2D geometric Canvas scenery never appears at startup
+2. old 2D scenery never flashes during weather refresh
+3. old 2D scenery never appears after background/resume
+4. cinematic path does not visibly mix with Filament underneath
+5. FULL FORECAST opens the full-screen Atmosynq forecast experience
+6. TIMELINE opens the same experience in hourly mode
+7. hourly / daily mode switching works
+8. no white stock Android forecast dialog remains
+9. Settings uses the branded Atmosynq sheet
+10. Location chooser uses the branded sheet
+11. location text search accepts city / ZIP / postal queries
+12. location results remain selectable and scrollable
+13. scene menu uses the branded sheet
+14. hero -> Atmosynq Worlds still works
+15. Eye Spy still works and persists completion/streak
+16. LIVE / STILL, refresh, widget and wallpaper controls remain functional
+17. no black/blank hero if Filament is delayed
+18. frame pacing, heat and battery remain acceptable
 
 ## Important boundary
-The interactive framework is now real, but the production-quality enterable cabin interior / fireplace / marshmallow scene asset is not yet shipped in this slice.
+The 2D Canvas renderer is removed.
 
-Do not fake that with low-detail procedural boxes. The next visual-content phase should attach production assets and scene-specific interactions to the Worlds contract only after this interaction foundation passes the Samsung gate.
+The generated 3D fallback scene is still intentionally present for location profiles without production cinematic assets. Its primitive buildings/trees/clouds are not considered final visual quality. Replacing those archetypes with production asset-backed Worlds is the next visual-content phase after this gate.
 
-## Backlog after this task clears
-- production cabin interior scene with fireplace + marshmallow roast
-- storm lightning hunt / photography interaction
-- coast stone-skipping interaction
-- forest wind / leaf interaction
-- city rooftop interaction
-- weather-event-only discoveries
-- night-only / seasonal secrets
+## Backlog after current gate
+- production cabin interior + fireplace / marshmallow interaction
+- production metro/city scene assets replacing primitive generated buildings
+- production mountain scene assets replacing generated fallback terrain
+- coast / forest scene packs
+- storm photography interaction
+- stone skipping
+- wind / leaf interaction
+- night-only / seasonal discoveries
 - shareable Atmosynq Moments
-- richer scene assets / materials before considering a custom Vulkan renderer
 
 ## Merge rule
-PR #12 remains draft. Do not merge and do not call the task complete until final exact-head CI is green and the v0.8 Samsung interaction gate is exercised.
+PR #12 remains draft.
+
+Do not merge until:
+- final documentation head CI is green
+- the exact v0.8.1 APK passes the Samsung visual/interaction gate
 
 ## Next step
-Verify the final documentation-only head in CI, then install the exact green v0.8 APK on the Samsung and run the interaction/device gate. Keep PR #12 draft until that device evidence is clean.
+Run CI on the documentation-only head, then install that exact v0.8.1 artifact on the Samsung and validate against the gate above.
