@@ -14,18 +14,49 @@ enum class WorldKind {
     STORM
 }
 
+data class NormalizedRegion(
+    val left: Float,
+    val top: Float,
+    val right: Float,
+    val bottom: Float
+) {
+    init {
+        require(left in 0f..1f)
+        require(top in 0f..1f)
+        require(right in 0f..1f)
+        require(bottom in 0f..1f)
+        require(left < right)
+        require(top < bottom)
+    }
+
+    val centerX: Float
+        get() = (left + right) * 0.5f
+
+    val centerY: Float
+        get() = (top + bottom) * 0.5f
+
+    fun contains(
+        x: Float,
+        y: Float
+    ): Boolean =
+        x in left..right &&
+            y in top..bottom
+}
+
+enum class WorldHotspotAction {
+    FOCUS,
+    ENTER,
+    OBSERVE
+}
+
 data class EyeSpyTarget(
     val id: String,
     val label: String,
     val hint: String,
-    val xFraction: Float,
-    val yFraction: Float
-) {
-    init {
-        require(xFraction in 0f..1f)
-        require(yFraction in 0f..1f)
-    }
-}
+    val detail: String,
+    val region: NormalizedRegion,
+    val action: WorldHotspotAction = WorldHotspotAction.FOCUS
+)
 
 data class WorldExperience(
     val kind: WorldKind,
@@ -87,22 +118,25 @@ object WorldExperienceResolver {
                         id = "ridge",
                         label = "the high ridge",
                         hint = "Look above the horizon.",
-                        xFraction = 0.30f,
-                        yFraction = 0.31f
+                        detail = "The ridge is the natural overlook for this world.",
+                        region = NormalizedRegion(0.1f, 0.18f, 0.48f, 0.42f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "cloud",
                         label = "the wandering cloud",
                         hint = "Search the upper sky.",
-                        xFraction = 0.68f,
-                        yFraction = 0.20f
+                        detail = "Cloud structure shifts with the live weather state.",
+                        region = NormalizedRegion(0.52f, 0.08f, 0.84f, 0.34f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "warm-light",
                         label = "the warm light",
                         hint = "Look low in the shelter line.",
-                        xFraction = 0.63f,
-                        yFraction = 0.62f
+                        detail = "A warm shelter light marks the cabin entry point.",
+                        region = NormalizedRegion(0.52f, 0.48f, 0.77f, 0.74f),
+                        action = WorldHotspotAction.ENTER
                     )
                 )
         )
@@ -120,22 +154,25 @@ object WorldExperienceResolver {
                         id = "storm-cloud",
                         label = "the darkest cloud",
                         hint = "Check the upper-left sky.",
-                        xFraction = 0.25f,
-                        yFraction = 0.23f
+                        detail = "This cloud bank is the storm's visual anchor.",
+                        region = NormalizedRegion(0.05f, 0.08f, 0.45f, 0.38f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "reflection",
                         label = "a rain reflection",
                         hint = "Search near the lower center.",
-                        xFraction = 0.53f,
-                        yFraction = 0.72f
+                        detail = "Rain reflections intensify as precipitation rises.",
+                        region = NormalizedRegion(0.34f, 0.62f, 0.7f, 0.9f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "horizon",
                         label = "the storm horizon",
                         hint = "Look where the world meets the sky.",
-                        xFraction = 0.76f,
-                        yFraction = 0.45f
+                        detail = "The horizon carries the storm's visibility and lightning events.",
+                        region = NormalizedRegion(0.58f, 0.34f, 0.95f, 0.58f),
+                        action = WorldHotspotAction.FOCUS
                     )
                 )
         )
@@ -153,22 +190,25 @@ object WorldExperienceResolver {
                         id = "rooftop",
                         label = "the highest rooftop",
                         hint = "Scan the skyline.",
-                        xFraction = 0.58f,
-                        yFraction = 0.39f
+                        detail = "The rooftop becomes the city observation point.",
+                        region = NormalizedRegion(0.44f, 0.24f, 0.72f, 0.52f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "sky-break",
                         label = "the bright sky break",
                         hint = "Look above the buildings.",
-                        xFraction = 0.72f,
-                        yFraction = 0.20f
+                        detail = "A break in the cloud deck reveals live sky lighting.",
+                        region = NormalizedRegion(0.58f, 0.06f, 0.9f, 0.3f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "street-glow",
                         label = "the street glow",
                         hint = "Search near ground level.",
-                        xFraction = 0.36f,
-                        yFraction = 0.73f
+                        detail = "Street reflections react to rain and nighttime conditions.",
+                        region = NormalizedRegion(0.18f, 0.62f, 0.56f, 0.92f),
+                        action = WorldHotspotAction.FOCUS
                     )
                 )
         )
@@ -186,22 +226,25 @@ object WorldExperienceResolver {
                         id = "sun",
                         label = "the sun glow",
                         hint = "Search the bright side of the sky.",
-                        xFraction = 0.77f,
-                        yFraction = 0.22f
+                        detail = "Sun position and warmth follow the local time of day.",
+                        region = NormalizedRegion(0.62f, 0.08f, 0.94f, 0.34f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "water",
                         label = "the water shimmer",
                         hint = "Look low and near the center.",
-                        xFraction = 0.52f,
-                        yFraction = 0.73f
+                        detail = "The water surface carries wind and precipitation response.",
+                        region = NormalizedRegion(0.28f, 0.58f, 0.76f, 0.92f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "wind-mark",
                         label = "the wind mark",
                         hint = "Search the open side of the scene.",
-                        xFraction = 0.24f,
-                        yFraction = 0.48f
+                        detail = "Wind direction changes how particles and foliage move.",
+                        region = NormalizedRegion(0.06f, 0.34f, 0.42f, 0.66f),
+                        action = WorldHotspotAction.FOCUS
                     )
                 )
         )
@@ -219,22 +262,25 @@ object WorldExperienceResolver {
                         id = "tree-line",
                         label = "the tree line",
                         hint = "Look along the lower-left edge.",
-                        xFraction = 0.24f,
-                        yFraction = 0.62f
+                        detail = "The tree line is the main wind-reactive foreground zone.",
+                        region = NormalizedRegion(0.03f, 0.46f, 0.46f, 0.84f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "cloud",
                         label = "the small cloud",
                         hint = "Search the upper half.",
-                        xFraction = 0.63f,
-                        yFraction = 0.24f
+                        detail = "Cloud cover and brightness follow the active weather report.",
+                        region = NormalizedRegion(0.48f, 0.06f, 0.82f, 0.36f),
+                        action = WorldHotspotAction.FOCUS
                     ),
                     EyeSpyTarget(
                         id = "horizon",
                         label = "the far horizon",
                         hint = "Look past the foreground.",
-                        xFraction = 0.72f,
-                        yFraction = 0.48f
+                        detail = "The distant horizon carries visibility, fog and incoming weather.",
+                        region = NormalizedRegion(0.52f, 0.34f, 0.96f, 0.6f),
+                        action = WorldHotspotAction.FOCUS
                     )
                 )
         )
