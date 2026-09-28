@@ -64,6 +64,8 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private var renderOnce = true
     private var filamentReady = false
     private var cinematicActive = false
+    private var explorationMode = false
+    private var sceneTapListener: ((Float, Float) -> Unit)? = null
     private var startedAtNanos = 0L
 
     private var cameraYaw = 0f
@@ -229,6 +231,39 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         }
     }
 
+    fun setExplorationMode(enabled: Boolean) {
+        explorationMode = enabled
+        cinematicBackdrop.setExplorationMode(enabled)
+        if (!enabled) {
+            cinematicBackdrop.resetExplorationFocus()
+        }
+        updateInteractionParallax()
+        requestRender()
+    }
+
+    fun setOnSceneTapListener(
+        listener: ((u: Float, v: Float) -> Unit)?
+    ) {
+        sceneTapListener = listener
+    }
+
+    fun focusOnSceneRegion(
+        centerU: Float,
+        centerV: Float,
+        zoom: Float = 1.34f
+    ) {
+        if (!cinematicActive) return
+        cinematicBackdrop.focusOnSourceRegion(
+            centerU = centerU,
+            centerV = centerV,
+            zoom = zoom
+        )
+    }
+
+    fun resetSceneFocus() {
+        cinematicBackdrop.resetExplorationFocus()
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         attached = true
@@ -305,6 +340,18 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 ) {
                     performClick()
                     fxOverlay.addTouchPulse(event.x, event.y)
+
+                    if (cinematicActive) {
+                        cinematicBackdrop
+                            .mapViewPointToSourceUv(
+                                event.x,
+                                event.y
+                            )
+                            ?.let { (u, v) ->
+                                sceneTapListener?.invoke(u, v)
+                            }
+                    }
+
                     requestRender()
                 }
 
@@ -574,6 +621,14 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         val y = cameraPitch / MAX_CAMERA_PITCH
 
         cinematicBackdrop.setParallax(x, y)
+        if (explorationMode) {
+            val zoom =
+                (
+                    BASE_CAMERA_DISTANCE /
+                        cameraDistance
+                    ).coerceIn(1f, 1.75f)
+            cinematicBackdrop.setInteractiveZoom(zoom)
+        }
         fxOverlay.setParallax(x, y)
     }
 
