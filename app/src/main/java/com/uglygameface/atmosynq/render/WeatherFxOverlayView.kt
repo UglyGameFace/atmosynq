@@ -770,35 +770,68 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         wind: Float,
         cloud: Float
     ) {
-        if (wind < 0.22f) return
+        if (wind < 0.30f) return
 
-        strokePaint.strokeWidth = 1.25f + wind * 0.8f
-        strokePaint.color = Color.argb(
-            (24f + wind * 35f + cloud * 18f).toInt().coerceIn(0, 84),
-            174,
-            228,
-            255
-        )
+        // Wind is shown as a few soft atmospheric wisps in the upper sky.
+        // The old full-card horizontal streaks looked like sideways rain.
+        strokePaint.style = Paint.Style.STROKE
+        strokePaint.strokeCap = Paint.Cap.ROUND
+        strokePaint.strokeWidth = 0.75f + wind * 0.35f
+        strokePaint.color =
+            Color.argb(
+                (7f + wind * 10f + cloud * 5f)
+                    .toInt()
+                    .coerceIn(0, 24),
+                190,
+                224,
+                241
+            )
 
         val w = width.toFloat()
         val h = height.toFloat()
-        val speed = 0.18f + wind * 0.44f
+        val speed = 0.055f + wind * 0.075f
 
-        repeat(15) { index ->
+        repeat(7) { index ->
             val seed = hash(index * 59 + 101)
-            val y = h * (0.16f + (((seed shr 7) and 0x3ff) / 1023f) * 0.66f)
-            val phase = fract((seconds * speed + index * 0.137f))
-            val x = phase * (w * 1.35f) - w * 0.18f
-            val length = w * (0.035f + (index % 4) * 0.012f)
-            val bend = sin(seconds * 0.7f + index) * h * 0.006f
-            canvas.drawLine(
-                x,
-                y + bend,
+            val y =
+                h *
+                    (
+                        0.16f +
+                            (((seed shr 7) and 0x3ff) / 1023f) *
+                            0.34f
+                        )
+            val phase =
+                fract(
+                    seconds * speed +
+                        index * 0.173f
+                )
+            val x =
+                phase * (w * 1.32f) -
+                    w * 0.18f
+            val length =
+                w *
+                    (
+                        0.025f +
+                            (index % 3) * 0.009f
+                        )
+            val bend =
+                sin(seconds * 0.34f + index) *
+                    h * 0.003f
+
+            path.reset()
+            path.moveTo(x, y + bend)
+            path.cubicTo(
+                x + length * 0.30f,
+                y + bend - h * 0.002f,
+                x + length * 0.70f,
+                y + bend + h * 0.002f,
                 x + length,
-                y + bend - h * 0.012f * wind,
-                strokePaint
+                y + bend
             )
+            canvas.drawPath(path, strokePaint)
         }
+
+        strokePaint.style = Paint.Style.STROKE
     }
 
     private fun drawPrecipitation(
@@ -840,32 +873,68 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         intensity: Float,
         wind: Float
     ) {
-        val count = (42 + intensity * 105f).toInt()
+        val count =
+            (38 + intensity * 112f)
+                .toInt()
         val w = width.toFloat()
         val h = height.toFloat()
 
-        strokePaint.strokeWidth = 1.0f + intensity * 1.25f
-        strokePaint.color = Color.argb(
-            (74 + intensity * 82f).toInt().coerceIn(70, 170),
-            174,
-            224,
-            255
-        )
+        strokePaint.strokeCap = Paint.Cap.ROUND
+        strokePaint.strokeWidth =
+            0.85f + intensity * 0.95f
+        strokePaint.color =
+            Color.argb(
+                (62 + intensity * 76f)
+                    .toInt()
+                    .coerceIn(58, 150),
+                185,
+                225,
+                246
+            )
 
         repeat(count) { index ->
             val seed = hash(index * 97 + 701)
-            val x0 = ((seed and 0xffff) / 65535f) * w
-            val ySeed = (((seed shr 16) and 0xffff) / 65535f)
-            val speed = 0.48f + ((index % 11) / 11f) * 0.55f
-            val progress = fract(ySeed + seconds * speed * (0.72f + intensity))
-            val y0 = progress * (h * 1.18f) - h * 0.09f
-            val length = h * (0.025f + intensity * 0.045f + (index % 4) * 0.004f)
-            val slant = w * (0.008f + wind * 0.018f)
+            val x0 =
+                ((seed and 0xffff) / 65535f) *
+                    w
+            val ySeed =
+                (
+                    ((seed shr 16) and 0xffff) /
+                        65535f
+                    )
+            val speed =
+                0.52f +
+                    ((index % 11) / 11f) *
+                    0.50f
+            val progress =
+                fract(
+                    ySeed +
+                        seconds *
+                        speed *
+                        (0.72f + intensity)
+                )
+            val y0 =
+                progress * (h * 1.16f) -
+                    h * 0.08f
+            val length =
+                h *
+                    (
+                        0.021f +
+                            intensity * 0.034f +
+                            (index % 4) * 0.003f
+                        )
+
+            // Rain falls down. Wind is allowed to lean the drop only a little;
+            // using screen width here made moderate wind look horizontal.
+            val slant =
+                length *
+                    (0.025f + wind * 0.11f)
+                        .coerceAtMost(0.22f)
 
             canvas.drawLine(
-                x0 + parallaxX * 9f,
+                x0 + parallaxX * 5f,
                 y0,
-                x0 - slant + parallaxX * 13f,
+                x0 - slant + parallaxX * 6f,
                 y0 + length,
                 strokePaint
             )
