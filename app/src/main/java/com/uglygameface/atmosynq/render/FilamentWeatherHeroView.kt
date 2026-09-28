@@ -405,11 +405,11 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         view.bloomOptions =
             view.bloomOptions.apply {
-                enabled = true
-                strength = 0.040f
-                resolution = 480
-                levels = 7
-                quality = FilamentView.QualityLevel.HIGH
+                // Device screenshots showed emissive geometry reading as floating
+                // light orbs. Keep the post stack available, but do not bloom
+                // environment meshes until the scene earns it.
+                enabled = false
+                strength = 0.0f
                 lensFlare = false
                 starburst = false
                 chromaticAberration = 0.0f
@@ -493,7 +493,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     }
 
     private fun configureCamera(v: ModelViewer) {
-        v.cameraFocalLength = 31f
+        v.cameraFocalLength = 36f
         v.cameraNear = 0.08f
         v.cameraFar = 140f
         v.camera.setExposure(
@@ -512,12 +512,12 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         val yaw = (cameraYaw + idleYaw).toDouble()
         val targetX = 0.0
-        val targetY = (1.15f + cameraPitch * 1.10f).toDouble()
-        val targetZ = -2.9
+        val targetY = (1.34f + cameraPitch * 1.02f).toDouble()
+        val targetZ = -4.0
         val distance = cameraDistance.toDouble()
 
         val eyeX = sin(yaw) * distance * 0.78
-        val eyeY = (3.0f + cameraPitch * 4.25f + idleLift).toDouble()
+        val eyeY = (3.45f + cameraPitch * 3.8f + idleLift).toDouble()
         val eyeZ = targetZ + cos(yaw) * distance
 
         v.camera.lookAt(
@@ -586,20 +586,15 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             if (!locationResolved) {
                 0.0f
             } else when (sceneProfile.settlement) {
-                SettlementKind.METRO -> 0.16f
-                SettlementKind.CITY -> 0.32f
-                SettlementKind.TOWN -> 1.0f
-                SettlementKind.LOCAL -> 0.72f
+                SettlementKind.METRO -> 0.08f
+                SettlementKind.CITY -> 0.22f
+                SettlementKind.TOWN -> 0.48f
+                SettlementKind.LOCAL -> 0.24f
             }
-        val streetScale =
-            if (!locationResolved) {
-                0.0f
-            } else when (sceneProfile.settlement) {
-                SettlementKind.METRO -> 1.0f
-                SettlementKind.CITY -> 1.0f
-                SettlementKind.TOWN -> 0.78f
-                SettlementKind.LOCAL -> 0.38f
-            }
+        // The v0.5.1 device build exposed the lamp heads as floating lights.
+        // Remove this layer completely until the fixtures are modeled and lit
+        // with real light sources instead of emissive balls.
+        val streetScale = 0.0f
 
         var pineScale = 0.0f
         var broadleafScale = 0.0f
@@ -636,8 +631,21 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         tm.openLocalTransformTransaction()
         try {
+            applyEntityGroup(
+                asset,
+                tm,
+                BASE_ENVIRONMENT,
+                if (locationResolved) 1.0f else 0.0f,
+                14.0f
+            )
             applyEntityGroup(asset, tm, MOUNTAINS, mountainScale, 7.0f)
-            applyEntityGroup(asset, tm, ROLLING_HILLS, rollingScale, 5.0f)
+            applyEntityGroup(
+                asset,
+                tm,
+                ROLLING_HILLS,
+                if (locationResolved) rollingScale else 0.0f,
+                7.0f
+            )
             applyEntityGroup(asset, tm, CITY_PARTS, cityScale, 8.0f)
             applyEntityGroup(asset, tm, HOUSE_PARTS, houseScale, 6.0f)
             applyEntityGroup(asset, tm, STREET_PARTS, streetScale, 5.0f)
@@ -913,9 +921,9 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
     companion object {
         private const val SCENE_ASSET = "filament/atmos_scene.glb"
-        private const val BASE_CAMERA_DISTANCE = 16.4f
-        private const val MIN_CAMERA_DISTANCE = 13.2f
-        private const val MAX_CAMERA_DISTANCE = 19.2f
+        private const val BASE_CAMERA_DISTANCE = 20.4f
+        private const val MIN_CAMERA_DISTANCE = 17.0f
+        private const val MAX_CAMERA_DISTANCE = 24.5f
         private const val MAX_CAMERA_YAW = 0.42f
         private const val MAX_CAMERA_PITCH = 0.22f
 
@@ -969,6 +977,15 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                 listOf("StreetPole$index", "StreetLight$index")
             }
 
+        private val BASE_ENVIRONMENT =
+            listOf(
+                "Ground",
+                "WetRoad",
+                "Water"
+            ) + (0 until 7).map { index ->
+                "RoadMark$index"
+            }
+
         private val RIBBONS =
             listOf(
                 "RibbonCyan",
@@ -990,7 +1007,8 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
                     PINE_PARTS +
                     BROADLEAF_PARTS +
                     PALM_PARTS +
-                    STREET_PARTS
+                    STREET_PARTS +
+                    BASE_ENVIRONMENT
                 ).distinct()
 
         @Volatile
