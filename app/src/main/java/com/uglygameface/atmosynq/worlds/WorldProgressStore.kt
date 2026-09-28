@@ -21,8 +21,9 @@ class WorldProgressStore(context: Context) {
     ): WorldProgress =
         WorldProgress(
             completedToday =
-                prefs.getString(KEY_COMPLETED_DAY, null) ==
-                    completionKey(date, kind),
+                completedKeys().contains(
+                    completionKey(date, kind)
+                ),
             streakDays =
                 prefs.getInt(KEY_STREAK_DAYS, 0)
                     .coerceAtLeast(0)
@@ -33,12 +34,7 @@ class WorldProgressStore(context: Context) {
         kind: WorldKind
     ): WorldProgress {
         val key = completionKey(date, kind)
-        if (
-            prefs.getString(
-                KEY_COMPLETED_DAY,
-                null
-            ) == key
-        ) {
+        if (completedKeys().contains(key)) {
             return progressFor(date, kind)
         }
 
@@ -65,10 +61,18 @@ class WorldProgressStore(context: Context) {
                 currentDate = date
             )
 
+        val todayPrefix = "$date:"
+        val updatedKeys =
+            completedKeys()
+                .filterTo(mutableSetOf()) {
+                    it.startsWith(todayPrefix)
+                }
+                .apply { add(key) }
+
         prefs.edit()
-            .putString(
-                KEY_COMPLETED_DAY,
-                key
+            .putStringSet(
+                KEY_COMPLETED_KEYS,
+                updatedKeys
             )
             .putString(
                 KEY_LAST_COMPLETED_DATE,
@@ -86,6 +90,12 @@ class WorldProgressStore(context: Context) {
         )
     }
 
+    private fun completedKeys(): Set<String> =
+        prefs.getStringSet(
+            KEY_COMPLETED_KEYS,
+            emptySet()
+        )?.toSet().orEmpty()
+
     private fun completionKey(
         date: LocalDate,
         kind: WorldKind
@@ -93,8 +103,8 @@ class WorldProgressStore(context: Context) {
         "$date:${kind.name}"
 
     companion object {
-        private const val KEY_COMPLETED_DAY =
-            "completed_day"
+        private const val KEY_COMPLETED_KEYS =
+            "completed_keys"
         private const val KEY_LAST_COMPLETED_DATE =
             "last_completed_date"
         private const val KEY_STREAK_DAYS =
