@@ -30,6 +30,9 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 class WorldExploreActivity : Activity() {
+    private lateinit var rootView: FrameLayout
+    private lateinit var topBarView: LinearLayout
+    private lateinit var bottomPanelView: LinearLayout
     private lateinit var sceneView: FilamentWeatherHeroView
     private lateinit var sceneFrame: FrameLayout
     private lateinit var worldTitle: TextView
@@ -80,7 +83,7 @@ class WorldExploreActivity : Activity() {
                 experience.primaryScene?.hotspots.orEmpty()
             )
 
-        val root =
+        rootView =
             FrameLayout(this).apply {
                 background =
                     GradientDrawable(
@@ -167,7 +170,7 @@ class WorldExploreActivity : Activity() {
                 )
             }
 
-        root.addView(
+        rootView.addView(
             sceneFrame,
             FrameLayout.LayoutParams(
                 dp(240),
@@ -176,9 +179,9 @@ class WorldExploreActivity : Activity() {
             )
         )
 
-        val topBar = buildTopBar()
-        root.addView(
-            topBar,
+        topBarView = buildTopBar()
+        rootView.addView(
+            topBarView,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -186,9 +189,9 @@ class WorldExploreActivity : Activity() {
             )
         )
 
-        val bottomPanel = buildBottomPanel()
-        root.addView(
-            bottomPanel,
+        bottomPanelView = buildBottomPanel()
+        rootView.addView(
+            bottomPanelView,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -200,33 +203,33 @@ class WorldExploreActivity : Activity() {
             }
         )
 
-        root.setOnApplyWindowInsetsListener { _, insets ->
+        rootView.setOnApplyWindowInsetsListener { _, insets ->
             if (android.os.Build.VERSION.SDK_INT >= 30) {
                 val bars =
                     insets.getInsets(
                         WindowInsets.Type.systemBars()
                     )
-                topBar.setPadding(
+                topBarView.setPadding(
                     dp(14),
                     bars.top + dp(8),
                     dp(14),
                     dp(8)
                 )
                 val params =
-                    bottomPanel.layoutParams as FrameLayout.LayoutParams
+                    bottomPanelView.layoutParams as FrameLayout.LayoutParams
                 params.bottomMargin = bars.bottom + dp(12)
-                bottomPanel.layoutParams = params
+                bottomPanelView.layoutParams = params
             }
             insets
         }
 
-        setContentView(root)
+        setContentView(rootView)
 
-        root.post {
+        rootView.post {
             layoutSourceAspectViewport(
-                root = root,
-                topBar = topBar,
-                bottomPanel = bottomPanel,
+                root = rootView,
+                topBar = topBarView,
+                bottomPanel = bottomPanelView,
                 sceneFrame = sceneFrame
             )
         }
@@ -237,7 +240,9 @@ class WorldExploreActivity : Activity() {
                 false
             )
         ) {
-            root.post { startEyeSpy() }
+            if (activeScene != null) {
+                rootView.post { startEyeSpy() }
+            }
         }
     }
 
@@ -647,22 +652,11 @@ class WorldExploreActivity : Activity() {
     }
 
     private fun relayoutSceneViewport() {
-        val root =
-            sceneFrame.parent as? FrameLayout
-                ?: return
-
-        val topBar =
-            root.getChildAt(1)
-                ?: return
-        val bottomPanel =
-            root.getChildAt(2)
-                ?: return
-
-        root.post {
+        rootView.post {
             layoutSourceAspectViewport(
-                root = root,
-                topBar = topBar,
-                bottomPanel = bottomPanel,
+                root = rootView,
+                topBar = topBarView,
+                bottomPanel = bottomPanelView,
                 sceneFrame = sceneFrame
             )
         }
@@ -687,6 +681,15 @@ class WorldExploreActivity : Activity() {
     }
 
     private fun startEyeSpy() {
+        if (
+            activeScene == null ||
+            dailyTargets.isEmpty()
+        ) {
+            interactionStatus.text =
+                "Daily Eye Spy is unavailable in this live 3D World until its dedicated semantic scene pack is installed."
+            return
+        }
+
         eyeSpyActive = true
         eyeSpyIndex = 0
         sceneView.resetSceneFocus()
