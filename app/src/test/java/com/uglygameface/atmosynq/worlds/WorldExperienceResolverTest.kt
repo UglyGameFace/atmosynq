@@ -24,6 +24,21 @@ class WorldExperienceResolverTest {
 
         assertEquals(WorldKind.CABIN, world.kind)
         assertEquals(3, world.eyeSpyTargets.size)
+        assertEquals(
+            "worlds/cabin_night_exterior.webp",
+            world.primaryScene?.assetPath
+        )
+        assertEquals(
+            "worlds/cabin_fireplace_interior.webp",
+            world.interiorScene?.assetPath
+        )
+        assertTrue(
+            world.primaryScene
+                ?.hotspots
+                ?.any {
+                    it.action == WorldHotspotAction.ENTER
+                } == true
+        )
     }
 
     @Test
@@ -74,6 +89,27 @@ class WorldExperienceResolverTest {
                 weather = null
             ).kind
         )
+    }
+
+    @Test
+    fun ordinaryTemperateLocalProfileGetsHighResolutionForestScene() {
+        val world =
+            WorldExperienceResolver.resolve(
+                profile(
+                    settlement = SettlementKind.LOCAL,
+                    terrain = TerrainKind.FLAT,
+                    latitude = LatitudeBand.TEMPERATE
+                ),
+                weather = null
+            )
+
+        assertEquals(WorldKind.FOREST, world.kind)
+        assertEquals(
+            "worlds/forest_mist_lake.webp",
+            world.primaryScene?.assetPath
+        )
+        assertEquals(1440, world.primaryScene?.sourceWidth)
+        assertEquals(2160, world.primaryScene?.sourceHeight)
     }
 
     @Test
