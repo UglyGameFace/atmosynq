@@ -1,19 +1,16 @@
 package com.uglygameface.atmosynq
 
 import android.app.Activity
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.TextUtils
 import android.view.Gravity
-import android.view.MotionEvent
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
-import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -27,18 +24,21 @@ import com.uglygameface.atmosynq.worlds.WorldExperienceResolver
 import com.uglygameface.atmosynq.worlds.WorldProgressStore
 import java.time.LocalDate
 import java.time.ZoneId
-import kotlin.math.hypot
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 class WorldExploreActivity : Activity() {
-    private lateinit var eyeSpyButton: Button
-    private lateinit var eyeSpyStatus: TextView
-    private lateinit var eyeSpyOverlay: EyeSpyOverlayView
+    private lateinit var sceneView: FilamentWeatherHeroView
+    private lateinit var eyeSpyButton: TextView
+    private lateinit var interactionStatus: TextView
 
     private lateinit var experience: WorldExperience
     private lateinit var dailyTargets: List<EyeSpyTarget>
     private lateinit var worldDate: LocalDate
     private val progressStore by lazy { WorldProgressStore(this) }
+
     private var eyeSpyActive = false
+    private var eyeSpyIndex = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,196 +66,96 @@ class WorldExploreActivity : Activity() {
                     }.getOrNull()
                 }
                 ?: ZoneId.systemDefault()
+
         worldDate = LocalDate.now(worldZone)
-        dailyTargets =
-            experience.eyeSpyTargets
-                .let { targets ->
-                    if (targets.isEmpty()) {
-                        targets
-                    } else {
-                        val offset =
-                            worldDate.dayOfYear % targets.size
-                        targets.drop(offset) +
-                            targets.take(offset)
-                    }
-                }
+        dailyTargets = rotateDailyTargets(experience.eyeSpyTargets)
 
         val root =
             FrameLayout(this).apply {
-                setBackgroundColor(Color.rgb(2, 8, 17))
-            }
-
-        val scene =
-            FilamentWeatherHeroView(this).apply {
-                setSceneProfile(profile)
-                setWeather(weather)
-                setAnimated(true)
-                contentDescription =
-                    "Atmosynq World. Drag to look around and pinch to zoom."
-            }
-
-        root.addView(
-            scene,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        )
-
-        root.addView(
-            View(this).apply {
                 background =
                     GradientDrawable(
                         GradientDrawable.Orientation.TOP_BOTTOM,
                         intArrayOf(
-                            Color.argb(205, 1, 8, 18),
-                            Color.argb(30, 1, 8, 18),
-                            Color.argb(8, 1, 8, 18),
-                            Color.argb(226, 1, 7, 16)
+                            Color.rgb(3, 16, 29),
+                            Color.rgb(2, 10, 20),
+                            Color.rgb(1, 7, 15)
                         )
                     )
-                isClickable = false
-            },
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        )
-
-        eyeSpyOverlay =
-            EyeSpyOverlayView(
-                targets = dailyTargets
-            ) { target, found, total ->
-                updateEyeSpyProgress(target, found, total)
             }
 
-        root.addView(
-            eyeSpyOverlay,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        )
-
-        val topBar =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(14), dp(8), dp(14), dp(8))
-            }
-
-        val back =
-            Button(this).apply {
-                text = "‹"
-                textSize = 28f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                minWidth = 0
-                minHeight = 0
-                stateListAnimator = null
-                background =
-                    roundedBackground(
-                        Color.argb(180, 4, 20, 35),
-                        22,
-                        Color.argb(135, 81, 195, 246)
-                    )
-                setOnClickListener { finish() }
-                contentDescription = "Back to Atmosynq dashboard"
-            }
-
-        topBar.addView(
-            back,
-            LinearLayout.LayoutParams(
-                dp(46),
-                dp(46)
-            ).apply {
-                marginEnd = dp(10)
-            }
-        )
-
-        val titleStack =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-
-        titleStack.addView(
-            TextView(this).apply {
-                text = "ATMOSYNQ WORLDS"
-                textSize = 9f
-                letterSpacing = 0.14f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.rgb(75, 218, 255))
-            }
-        )
-
-        titleStack.addView(
-            TextView(this).apply {
-                text = experience.title
-                textSize = 20f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                maxLines = 1
-                ellipsize = TextUtils.TruncateAt.END
-            }
-        )
-
-        topBar.addView(
-            titleStack,
-            LinearLayout.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                1f
-            )
-        )
-
-        val savedProgress =
-            progressStore.progressFor(
-                worldDate,
-                experience.kind
-            )
-
-        eyeSpyButton =
-            Button(this).apply {
-                text =
-                    if (savedProgress.completedToday) {
-                        "REPLAY"
-                    } else {
-                        "DAILY EYE SPY"
-                    }
-                textSize = 10.5f
-                letterSpacing = 0.06f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                minWidth = 0
-                minHeight = 0
-                stateListAnimator = null
-                background =
-                    roundedBackground(
-                        Color.argb(190, 8, 42, 66),
-                        18,
-                        Color.argb(180, 82, 211, 255)
-                    )
-                setOnClickListener {
-                    if (eyeSpyActive) {
-                        stopEyeSpy()
-                    } else {
-                        startEyeSpy()
-                    }
+        sceneView =
+            FilamentWeatherHeroView(this).apply {
+                setSceneProfile(profile)
+                setWeather(weather)
+                setAnimated(true)
+                setExplorationMode(true)
+                contentDescription =
+                    "Interactive Atmosynq world. Drag to look around, pinch to zoom and tap visible landmarks."
+                setOnSceneTapListener { u, v ->
+                    handleSceneTap(u, v)
                 }
             }
 
-        topBar.addView(
-            eyeSpyButton,
-            LinearLayout.LayoutParams(
-                dp(118),
-                dp(42)
-            ).apply {
-                marginStart = dp(8)
+        val sceneFrame =
+            FrameLayout(this).apply {
+                clipToOutline = true
+                elevation = dp(10).toFloat()
+                background =
+                    roundedBackground(
+                        Color.rgb(5, 23, 40),
+                        28,
+                        Color.rgb(55, 151, 202)
+                    )
+
+                addView(
+                    sceneView,
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                )
+
+                addView(
+                    TextView(this@WorldExploreActivity).apply {
+                        text = "TAP LANDMARKS  •  DRAG  •  PINCH"
+                        textSize = 8.5f
+                        letterSpacing = 0.08f
+                        setTypeface(typeface, Typeface.BOLD)
+                        setTextColor(Color.rgb(190, 225, 243))
+                        setPadding(
+                            dp(10),
+                            dp(7),
+                            dp(10),
+                            dp(7)
+                        )
+                        background =
+                            roundedBackground(
+                                Color.argb(190, 3, 17, 30),
+                                12,
+                                Color.argb(120, 72, 188, 237)
+                            )
+                    },
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.BOTTOM or Gravity.START
+                    ).apply {
+                        leftMargin = dp(10)
+                        bottomMargin = dp(10)
+                    }
+                )
             }
+
+        root.addView(
+            sceneFrame,
+            FrameLayout.LayoutParams(
+                dp(240),
+                dp(180),
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            )
         )
 
+        val topBar = buildTopBar()
         root.addView(
             topBar,
             FrameLayout.LayoutParams(
@@ -265,56 +165,7 @@ class WorldExploreActivity : Activity() {
             )
         )
 
-        val bottomPanel =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(14), dp(16), dp(14))
-                background =
-                    gradientBackground(
-                        intArrayOf(
-                            Color.argb(228, 7, 27, 47),
-                            Color.argb(236, 3, 14, 27)
-                        ),
-                        26,
-                        Color.argb(170, 62, 151, 201)
-                    )
-            }
-
-        bottomPanel.addView(
-            TextView(this).apply {
-                text = experience.subtitle
-                textSize = 14f
-                setTextColor(Color.rgb(224, 239, 248))
-            }
-        )
-
-        bottomPanel.addView(
-            TextView(this).apply {
-                text =
-                    "WORLD DNA  //  ${experience.signatureMoment.uppercase()}"
-                textSize = 9.5f
-                letterSpacing = 0.07f
-                setTypeface(typeface, Typeface.BOLD)
-                setTextColor(Color.rgb(108, 207, 255))
-                setPadding(0, dp(8), 0, 0)
-            }
-        )
-
-        eyeSpyStatus =
-            TextView(this).apply {
-                text =
-                    if (savedProgress.completedToday) {
-                        "✓ Daily discovery complete • ${savedProgress.streakDays}-day world streak. Replay anytime."
-                    } else {
-                        "TODAY'S DISCOVERY  //  Drag, zoom, then find three hidden details in this live world."
-                    }
-                textSize = 12f
-                setTextColor(Color.rgb(171, 198, 218))
-                setPadding(0, dp(10), 0, 0)
-            }
-
-        bottomPanel.addView(eyeSpyStatus)
-
+        val bottomPanel = buildBottomPanel()
         root.addView(
             bottomPanel,
             FrameLayout.LayoutParams(
@@ -350,6 +201,15 @@ class WorldExploreActivity : Activity() {
 
         setContentView(root)
 
+        root.post {
+            layoutSourceAspectViewport(
+                root = root,
+                topBar = topBar,
+                bottomPanel = bottomPanel,
+                sceneFrame = sceneFrame
+            )
+        }
+
         if (
             intent.getBooleanExtra(
                 EXTRA_START_EYE_SPY,
@@ -358,6 +218,308 @@ class WorldExploreActivity : Activity() {
         ) {
             root.post { startEyeSpy() }
         }
+    }
+
+    private fun buildTopBar(): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+
+            addView(
+                TextView(this@WorldExploreActivity).apply {
+                    text = "‹"
+                    textSize = 31f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                    background =
+                        roundedBackground(
+                            Color.argb(190, 4, 20, 35),
+                            23,
+                            Color.argb(160, 81, 195, 246)
+                        )
+                    setOnClickListener { finish() }
+                    contentDescription = "Back to Atmosynq dashboard"
+                },
+                LinearLayout.LayoutParams(
+                    dp(48),
+                    dp(48)
+                ).apply {
+                    marginEnd = dp(10)
+                }
+            )
+
+            val titleStack =
+                LinearLayout(this@WorldExploreActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+
+                    addView(
+                        TextView(this@WorldExploreActivity).apply {
+                            text = "ATMOSYNQ WORLDS"
+                            textSize = 9f
+                            letterSpacing = 0.14f
+                            setTypeface(typeface, Typeface.BOLD)
+                            setTextColor(Color.rgb(75, 218, 255))
+                        }
+                    )
+
+                    addView(
+                        TextView(this@WorldExploreActivity).apply {
+                            text = experience.title
+                            textSize = 20f
+                            setTypeface(typeface, Typeface.BOLD)
+                            setTextColor(Color.WHITE)
+                            maxLines = 1
+                            ellipsize = TextUtils.TruncateAt.END
+                        }
+                    )
+                }
+
+            addView(
+                titleStack,
+                LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
+            val savedProgress =
+                progressStore.progressFor(
+                    worldDate,
+                    experience.kind
+                )
+
+            eyeSpyButton =
+                TextView(this@WorldExploreActivity).apply {
+                    text =
+                        if (savedProgress.completedToday) {
+                            "REPLAY"
+                        } else {
+                            "DAILY EYE SPY"
+                        }
+                    textSize = 10f
+                    letterSpacing = 0.055f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                    background =
+                        roundedBackground(
+                            Color.argb(205, 8, 42, 66),
+                            20,
+                            Color.argb(200, 82, 211, 255)
+                        )
+                    setOnClickListener {
+                        if (eyeSpyActive) {
+                            stopEyeSpy()
+                        } else {
+                            startEyeSpy()
+                        }
+                    }
+                }
+
+            addView(
+                eyeSpyButton,
+                LinearLayout.LayoutParams(
+                    dp(120),
+                    dp(44)
+                ).apply {
+                    marginStart = dp(8)
+                }
+            )
+        }
+
+    private fun buildBottomPanel(): LinearLayout {
+        val savedProgress =
+            progressStore.progressFor(
+                worldDate,
+                experience.kind
+            )
+
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(17), dp(15), dp(17), dp(15))
+            background =
+                gradientBackground(
+                    intArrayOf(
+                        Color.argb(238, 7, 27, 47),
+                        Color.argb(244, 3, 14, 27)
+                    ),
+                    26,
+                    Color.argb(185, 62, 151, 201)
+                )
+
+            addView(
+                TextView(this@WorldExploreActivity).apply {
+                    text = experience.subtitle
+                    textSize = 16f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.rgb(230, 242, 249))
+                }
+            )
+
+            addView(
+                TextView(this@WorldExploreActivity).apply {
+                    text =
+                        "WORLD DNA  //  ${experience.signatureMoment.uppercase()}"
+                    textSize = 9.5f
+                    letterSpacing = 0.07f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.rgb(108, 207, 255))
+                    setPadding(0, dp(8), 0, 0)
+                }
+            )
+
+            interactionStatus =
+                TextView(this@WorldExploreActivity).apply {
+                    text =
+                        if (savedProgress.completedToday) {
+                            "✓ Daily discovery complete • ${savedProgress.streakDays}-day world streak. Tap landmarks to explore or replay Eye Spy."
+                        } else {
+                            "Tap a visible landmark to inspect it. Daily Eye Spy uses these same real scene regions."
+                        }
+                    textSize = 12.5f
+                    setTextColor(Color.rgb(178, 207, 225))
+                    setLineSpacing(0f, 1.10f)
+                    setPadding(0, dp(10), 0, 0)
+                }
+
+            addView(interactionStatus)
+        }
+    }
+
+    private fun layoutSourceAspectViewport(
+        root: FrameLayout,
+        topBar: View,
+        bottomPanel: View,
+        sceneFrame: View
+    ) {
+        val horizontalMargin = dp(12)
+        val maxWidth =
+            (root.width - horizontalMargin * 2)
+                .coerceAtLeast(dp(220))
+
+        val desiredHeight =
+            (maxWidth * SOURCE_ASPECT_HEIGHT /
+                SOURCE_ASPECT_WIDTH).roundToInt()
+
+        val top =
+            topBar.bottom + dp(10)
+        val bottom =
+            bottomPanel.top - dp(10)
+        val availableHeight =
+            (bottom - top)
+                .coerceAtLeast(dp(150))
+
+        val height =
+            min(
+                desiredHeight,
+                availableHeight
+            )
+        val width =
+            min(
+                maxWidth,
+                (
+                    height *
+                        SOURCE_ASPECT_WIDTH /
+                        SOURCE_ASPECT_HEIGHT
+                    ).roundToInt()
+            )
+
+        val params =
+            sceneFrame.layoutParams as FrameLayout.LayoutParams
+        params.width = width
+        params.height = height
+        params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        params.topMargin =
+            top +
+                ((availableHeight - height) / 2)
+                    .coerceAtLeast(0)
+        sceneFrame.layoutParams = params
+    }
+
+    private fun rotateDailyTargets(
+        targets: List<EyeSpyTarget>
+    ): List<EyeSpyTarget> {
+        if (targets.isEmpty()) return targets
+
+        val offset =
+            worldDate.dayOfYear % targets.size
+
+        return targets.drop(offset) +
+            targets.take(offset)
+    }
+
+    private fun handleSceneTap(
+        u: Float,
+        v: Float
+    ) {
+        val tappedTarget =
+            experience.eyeSpyTargets
+                .firstOrNull { target ->
+                    target.region.contains(u, v)
+                }
+
+        if (eyeSpyActive) {
+            handleEyeSpyTap(tappedTarget)
+            return
+        }
+
+        if (tappedTarget == null) {
+            sceneView.resetSceneFocus()
+            interactionStatus.text =
+                "No landmark there. Tap a visible tree line, cloud bank, light, water feature or horizon detail."
+            sceneView.performHapticFeedback(
+                HapticFeedbackConstants.KEYBOARD_TAP
+            )
+            return
+        }
+
+        sceneView.focusOnSceneRegion(
+            centerU = tappedTarget.region.centerX,
+            centerV = tappedTarget.region.centerY,
+            zoom = 1.30f
+        )
+        sceneView.performHapticFeedback(
+            HapticFeedbackConstants.LONG_PRESS
+        )
+
+        interactionStatus.text =
+            "${tappedTarget.label.replaceFirstChar { it.uppercase() }}  //  ${tappedTarget.detail}"
+    }
+
+    private fun handleEyeSpyTap(
+        tappedTarget: EyeSpyTarget?
+    ) {
+        val expected =
+            dailyTargets.getOrNull(eyeSpyIndex)
+                ?: return
+
+        if (tappedTarget?.id != expected.id) {
+            sceneView.performHapticFeedback(
+                HapticFeedbackConstants.KEYBOARD_TAP
+            )
+            interactionStatus.text =
+                "Not that one. ${expected.hint}"
+            return
+        }
+
+        sceneView.performHapticFeedback(
+            HapticFeedbackConstants.LONG_PRESS
+        )
+        sceneView.focusOnSceneRegion(
+            centerU = expected.region.centerX,
+            centerV = expected.region.centerY,
+            zoom = 1.34f
+        )
+
+        eyeSpyIndex += 1
+        updateEyeSpyProgress(
+            target = expected,
+            found = eyeSpyIndex,
+            total = dailyTargets.size
+        )
     }
 
     @Suppress("DEPRECATION")
@@ -371,25 +533,29 @@ class WorldExploreActivity : Activity() {
 
     private fun startEyeSpy() {
         eyeSpyActive = true
-        eyeSpyOverlay.startGame()
+        eyeSpyIndex = 0
+        sceneView.resetSceneFocus()
         eyeSpyButton.text = "STOP"
         eyeSpyButton.background =
             roundedBackground(
-                Color.argb(205, 79, 37, 116),
-                18,
-                Color.argb(210, 181, 94, 255)
+                Color.argb(215, 79, 37, 116),
+                20,
+                Color.argb(220, 181, 94, 255)
             )
-        showCurrentEyeSpyHint(found = 0)
+        showCurrentEyeSpyHint()
     }
 
     private fun stopEyeSpy() {
         eyeSpyActive = false
-        eyeSpyOverlay.stopGame()
+        eyeSpyIndex = 0
+        sceneView.resetSceneFocus()
+
         val progress =
             progressStore.progressFor(
                 worldDate,
                 experience.kind
             )
+
         eyeSpyButton.text =
             if (progress.completedToday) {
                 "REPLAY"
@@ -398,15 +564,16 @@ class WorldExploreActivity : Activity() {
             }
         eyeSpyButton.background =
             roundedBackground(
-                Color.argb(190, 8, 42, 66),
-                18,
-                Color.argb(180, 82, 211, 255)
+                Color.argb(205, 8, 42, 66),
+                20,
+                Color.argb(200, 82, 211, 255)
             )
-        eyeSpyStatus.text =
+
+        interactionStatus.text =
             if (progress.completedToday) {
-                "✓ Daily discovery complete • ${progress.streakDays}-day world streak. Replay anytime."
+                "✓ Daily discovery complete • ${progress.streakDays}-day world streak. Tap landmarks to keep exploring."
             } else {
-                "TODAY'S DISCOVERY  //  Drag, zoom, then find three hidden details in this live world."
+                "Tap a visible landmark to inspect it. Daily Eye Spy uses these same real scene regions."
             }
     }
 
@@ -421,24 +588,24 @@ class WorldExploreActivity : Activity() {
                     worldDate,
                     experience.kind
                 )
-            eyeSpyStatus.text =
-                "✓ Daily world complete • ${progress.streakDays}-day streak. ${target.label.replaceFirstChar { it.uppercase() }} was the last find."
+            interactionStatus.text =
+                "✓ Daily world complete • ${progress.streakDays}-day streak. ${target.label.replaceFirstChar { it.uppercase() }} was the final discovery."
             eyeSpyButton.text = "REPLAY"
             eyeSpyActive = false
             return
         }
 
-        showCurrentEyeSpyHint(found)
+        interactionStatus.text =
+            "FOUND  $found/$total  //  ${target.label.replaceFirstChar { it.uppercase() }}. Next: ${dailyTargets[found].hint}"
     }
 
-    private fun showCurrentEyeSpyHint(found: Int) {
+    private fun showCurrentEyeSpyHint() {
         val target =
-            dailyTargets
-                .getOrNull(found)
+            dailyTargets.getOrNull(eyeSpyIndex)
                 ?: return
 
-        eyeSpyStatus.text =
-            "TODAY'S EYE SPY  $found/${dailyTargets.size}  •  Find ${target.label}. ${target.hint}"
+        interactionStatus.text =
+            "TODAY'S EYE SPY  $eyeSpyIndex/${dailyTargets.size}  //  Find ${target.label}. ${target.hint}"
     }
 
     private fun roundedBackground(
@@ -479,138 +646,15 @@ class WorldExploreActivity : Activity() {
         (
             value *
                 resources.displayMetrics.density
-            ).toInt()
-
-    private inner class EyeSpyOverlayView(
-        private val targets: List<EyeSpyTarget>,
-        private val onFound: (
-            target: EyeSpyTarget,
-            found: Int,
-            total: Int
-        ) -> Unit
-    ) : View(this@WorldExploreActivity) {
-        private val markerPaint =
-            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = dp(2).toFloat()
-            }
-        private val textPaint =
-            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                textSize = dp(15).toFloat()
-                typeface = Typeface.DEFAULT_BOLD
-                textAlign = Paint.Align.CENTER
-            }
-
-        private var active = false
-        private var foundCount = 0
-        private var pulseX = -1f
-        private var pulseY = -1f
-        private var missPulse = false
-
-        init {
-            isClickable = false
-            contentDescription = "Eye Spy scene overlay"
-        }
-
-        fun startGame() {
-            active = true
-            foundCount = 0
-            isClickable = true
-            pulseX = -1f
-            pulseY = -1f
-            invalidate()
-        }
-
-        fun stopGame() {
-            active = false
-            foundCount = 0
-            isClickable = false
-            pulseX = -1f
-            pulseY = -1f
-            invalidate()
-        }
-
-        override fun performClick(): Boolean {
-            super.performClick()
-            return true
-        }
-
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            if (!active) return false
-
-            if (event.actionMasked != MotionEvent.ACTION_UP) {
-                return true
-            }
-
-            performClick()
-
-            val target =
-                targets.getOrNull(foundCount)
-                    ?: return true
-            val tx = target.xFraction * width
-            val ty = target.yFraction * height
-            val hitRadius = dp(58).toFloat()
-            val hit =
-                hypot(
-                    event.x - tx,
-                    event.y - ty
-                ) <= hitRadius
-
-            pulseX = event.x
-            pulseY = event.y
-            missPulse = !hit
-
-            if (hit) {
-                foundCount += 1
-                onFound(
-                    target,
-                    foundCount,
-                    targets.size
-                )
-                if (foundCount >= targets.size) {
-                    active = false
-                    isClickable = false
-                }
-            }
-
-            invalidate()
-            return true
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-
-            if (pulseX < 0f || pulseY < 0f) return
-
-            markerPaint.color =
-                if (missPulse) {
-                    Color.argb(185, 255, 121, 121)
-                } else {
-                    Color.argb(225, 89, 235, 255)
-                }
-            canvas.drawCircle(
-                pulseX,
-                pulseY,
-                dp(20).toFloat(),
-                markerPaint
-            )
-
-            if (!missPulse) {
-                canvas.drawText(
-                    "✓",
-                    pulseX,
-                    pulseY + dp(5),
-                    textPaint
-                )
-            }
-        }
-    }
+            ).roundToInt()
 
     companion object {
         const val EXTRA_WEATHER_JSON =
             "com.uglygameface.atmosynq.extra.WEATHER_JSON"
         const val EXTRA_START_EYE_SPY =
             "com.uglygameface.atmosynq.extra.START_EYE_SPY"
+
+        private const val SOURCE_ASPECT_WIDTH = 4f
+        private const val SOURCE_ASPECT_HEIGHT = 3f
     }
 }
