@@ -1,137 +1,162 @@
 # Active Task
 
 ## Active outcome
-Finish the Android Atmosynq dashboard before the cutoff with a believable cinematic weather hero, mockup-aligned UI, and worldwide city / postal-code support.
+Ship the Atmosynq Android dashboard as a distinctive premium weather product before cutoff, with believable weather motion, cinematic location-aware scenery, and a layout that does not look like a generic Android weather app.
 
 ## Scope lock
-This remains the single active task. Do not switch to iOS, Xiaomi rear-display work, unrelated widgets, live-wallpaper renderer migration, or another project until the Android dashboard clears the Samsung visual gate.
+This remains the single active task. Do not switch to iOS, Xiaomi rear-display work, unrelated widget redesign, live-wallpaper renderer migration, or another project until the Android dashboard clears the Samsung visual gate.
 
 ## Branch / PR
 - branch: `feat/v0.4.1-interactive-weather-portal`
 - draft PR: #12
 - production baseline at task start: `c713b52f62850ffa65441ba09f4377097115c797`
-- current target: 0.6.0 / versionCode 14
+- current target: 0.7.0 / versionCode 15
 - Filament: 1.77.1
 
-## Why v0.6.0 exists
-Samsung testing made the remaining problem undeniable.
+## Device evidence leading to v0.7.0
+The exact green v0.6.0 Samsung build proved the cinematic hybrid backdrop is a major improvement over the toy procedural settlement, but the product shell still failed the premium-layout bar.
 
-The generated Filament environment pipeline technically worked, but the actual phone still exposed:
-- dark synthetic-looking terrain
-- bright vertical / floating-looking geometry
-- toy-scene depth
-- low-believability vegetation and settlement detail
-- a hero that still looked like a renderer demo instead of the approved cinematic mockup
+Observed issues:
+- dashboard still read as stacked generic rounded cards
+- top brand + controls consumed too much visual attention without feeling distinctive
+- Animated / Static and sync were separate generic blocks
+- hero metrics were still one large generic glass rectangle
+- secondary actions looked like ordinary Android buttons
+- hourly forecast looked like standard cards
+- daily forecast looked like a plain list
+- the rain / wind visualization could read as sideways precipitation
 
-The UI below the hero was much closer, and the horizontal Atmosynq brand was materially better, but the main visual still failed.
+The next build therefore treats the entire dashboard layout as a product system, not a series of component tweaks.
 
-The root cause is no longer "not enough post-processing." The generated procedural 3D environment itself is not photoreal enough to be the primary visual layer on a phone-sized hero.
+## v0.7.0 visual system: Atmosphere Deck
 
-## v0.6.0 architecture pivot
-Atmosynq now uses a hybrid visual system instead of insisting that weak generated geometry be visible everywhere.
+### Orbit Header
+The top of the app is rebuilt into a compact asymmetric header:
+- horizontal Atmosynq wordmark on the left
+- micro-brand line: `WEATHER THAT COMES ALIVE`
+- compact settings control on the right
+- cyan-to-violet spectrum divider
 
-### CinematicBackdropView
-New:
-`app/src/main/java/com/uglygameface/atmosynq/render/CinematicBackdropView.kt`
+The old centered-logo / centered-tagline stack is removed.
 
-For supported lowland town / local / temperate city profiles:
-- a real cinematic raster environment is the primary visual layer
-- the image is center-cropped with overscan
-- drag interaction creates parallax
-- Animated mode adds extremely slow camera drift
-- weather/time modifies saturation, exposure and cool/warm balance
-- a controlled top/bottom data scrim protects the weather text
-- a left-side readability gradient matches the approved mockup hierarchy
+### Atmosphere Control Deck
+Animated / Static and sync status now live inside one shared glass surface.
 
-The first production backdrop is:
-`app/src/main/assets/backdrops/scene_temperate_town.webp`
+Motion modes are renamed:
+- `LIVE`
+- `STILL`
 
-It is a cinematic wooded lowland town / water scene suited to the Shelton / Connecticut device-test profile.
+Sync language is compact:
+- `OFFLINE`
+- `SYNCING…`
+- `SEARCHING…`
+- `LOCATING…`
+- `● LIVE • <time> ↻`
 
-The asset is intentionally small enough for mobile delivery while still being photographic rather than procedural geometry.
+This removes a full row of generic UI and makes the mode/status relationship feel intentional.
 
-### FilamentWeatherHeroView
-Filament remains in the product and continues to own the genuinely useful high-end paths:
-- 3D / PBR rendering for profiles not yet covered by a cinematic backdrop
+### Live Sky Hero
+The hero becomes the visual identity of the app:
+- 30 dp cinematic shell
+- stronger top/bottom readability scrim
+- vertical cyan → indigo → violet signature spectrum rail
+- `NOW // LIVE SKY` eyebrow
+- location line
+- larger 84 sp temperature
+- stronger condition hierarchy
+- scene control remains available in the top-right
+
+The cinematic / Filament hybrid scene pipeline remains underneath this layout.
+
+### Metric Clusters
+The previous one-piece metrics panel is removed.
+
+The hero now ends in a modular two-cluster dock:
+- thermal + humidity
+- wind + visibility
+
+A separate lower strip carries:
+- precipitation
+- sunrise / sunset
+
+This gives the hero layered depth instead of one generic translucent rectangle.
+
+### Atmosphere Dock
+Wallpaper, location and widget actions are grouped into one product surface:
+- micro header `ATMOSPHERE DOCK / MAKE IT YOURS`
+- large primary Live Wallpaper action
+- compact Location and Widget secondary controls
+- press-scale interaction feedback
+
+### Forecast Stream
+Forecast sections now use a distinct "stream" language:
+- cyan/violet vertical spectrum rail in section headers
+- `FORECAST STREAM` eyebrow
+- timeline action on hourly forecast
+- full forecast action on daily forecast
+
+Hourly cards now include:
+- stronger active `NOW` state
+- uppercase time
+- weather icon
+- temperature
+- `RAIN xx%` label
+- cyan→violet precipitation probability rail
+
+Daily rows now include:
+- one-line day
+- icon
+- one-line condition
+- high / low
+- precipitation pill
+- precipitation probability rail
+- independent rounded row surface rather than generic separators
+
+## Rain / wind physics correction
+The old wind visualization used full-width horizontal streaks and rain slant was based on screen width. On-device this could read as rain flying sideways.
+
+v0.7.0 changes:
+- wind is represented by a few low-opacity curved upper-sky wisps
+- wind no longer draws bright horizontal lines across the whole hero
+- rain slant is derived from drop length rather than screen width
+- wind influence is capped
+- rain therefore falls primarily downward even in moderate wind
+
+## Cinematic hybrid renderer retained
+For lowland temperate town/local profiles such as the Samsung Shelton test:
+- cinematic raster environment is primary
+- drag parallax remains
+- Animated mode adds slow scene drift
+- weather/time calibrates scene color
+- live rain/snow/fog/thunder FX remain above it
+
+Filament remains active for uncovered profiles and retains:
 - HDR
-- PCSS shadows
-- TAA
-- 4x MSAA
+- PCSS
+- TAA + 4x MSAA
 - ULTRA AO + bent normals
-- SSR
-- refraction
+- SSR / refraction
 - native fog
 - dynamic resolution
 - color grading
-- interactive camera / pinch / drag infrastructure
+- interactive camera infrastructure
 
-For a profile covered by the cinematic layer:
-- the cinematic backdrop is shown above the TextureView
-- the bad procedural Filament settlement is hidden rather than allowed to contaminate the photo
-- WeatherFxOverlayView still supplies live rain, snow, fog, wind, thunder and touch response
-- drag / pinch / tap remain active
-- Filament is not deleted, because it remains the engine for profiles / features where it adds visual value
-
-This is a quality-first decision. "Push Filament to the max" does not mean forcing visibly fake meshes to remain on screen merely because they are 3D.
-
-## Worldwide location support remains
-Location behavior is unchanged:
-- search any city
-- search city + state/province/country
-- search ZIP / postal code
-- manual search requires no location permission
+## Worldwide location support retained
+- global city search
+- city + state/province/country search
+- ZIP / postal search
+- no location permission required for manual search
 - optional approximate current location
-- resolved place name shown in the hero
-- local terrain relief sampling
+- terrain relief sampling
 - settlement / terrain / latitude classification
-- saved place persistence
+- selected-place persistence
 
-The global scene classifier is still the routing layer. Cinematic backdrop coverage can expand by scene archetype without creating a city whitelist.
-
-## Existing mockup/UI corrections retained
-- safe system-bar spacing
-- approved horizontal Atmosynq brand treatment
-- settings control
-- centered tagline
-- glass Animated / Static selector
-- tappable sync pill
-- large cinematic hero
-- readable location text
-- larger temperature / condition hierarchy
-- translucent metrics panel
-- gradient live-wallpaper CTA
-- location / widget actions
-- forecast section headers
-- privacy explanation moved out of the main dashboard
-
-## New forecast cleanup
-The 7-day rows now reserve a fixed single-line day column so `Tomorrow` cannot split into `Tomorro / w`.
-Condition text is a single ellipsized line so the row stays aligned.
-
-## Regression protection
-New test:
-`CinematicBackdropAssetTest.kt`
-
-CI now rejects a missing or suspiciously tiny cinematic backdrop and verifies the RIFF / WEBP signature.
-
-Existing tests continue to cover:
-- production GLB integrity / size / material nodes
-- global geocoding
-- postal-code metadata
-- location scene classification
-- terrain relief
-- weather
-- wallpaper behavior
-
-## Preserved behavior
-Must remain intact:
+## Functional behavior retained
 - Open-Meteo weather
 - hourly forecast
 - 7-day forecast
-- Animated / Static
+- LIVE / STILL preference
 - drag / pinch / tap
-- global city / postal search
-- approximate current location
 - widget pinning
 - wallpaper picker
 - live wallpaper renderer
@@ -139,34 +164,33 @@ Must remain intact:
 - Filament fallback
 
 ## Exact-head CI gate
-The final 0.6.0 head must pass:
+The final 0.7.0 head must pass:
 - cinematic backdrop asset test
 - production Filament scene generation
-- unit / regression tests
+- geocoder / scene / weather / wallpaper regression tests
 - Kotlin compilation
 - Android resource processing
 - debug APK assembly
 - artifact upload
 
 ## Samsung visual gate
-Install the exact green 0.6.0 APK and verify:
-1. Shelton no longer shows the dark procedural toy settlement.
-2. The hero reads as a cinematic wooded New England / lowland scene.
-3. No floating lights / vertical white geometry.
-4. No giant mesh clouds.
-5. No radioactive red / green / magenta bloom.
-6. Night remains visible rather than becoming a black card.
-7. Weather FX layer correctly adds live rain / snow / fog / thunder.
-8. Location text and weather hierarchy remain readable.
-9. Drag creates believable parallax and does not break vertical scrolling.
-10. Static mode stops idle scene motion.
-11. `Tomorrow` stays on one line.
-12. Forecast / location / widget / wallpaper controls still work.
-13. Background/resume is stable.
-14. Frame pacing / heat / battery remain acceptable.
+Install the exact green 0.7.0 APK and verify:
+1. top header feels compact and branded rather than generic
+2. LIVE / STILL + sync control reads as one intentional deck
+3. hero feels like the product centerpiece
+4. metric clusters are readable and no longer look like one generic glass table
+5. action dock feels integrated and premium
+6. hourly timeline is visually distinct
+7. daily rows stay aligned and Tomorrow never wraps
+8. precipitation rails reflect percentages
+9. rain falls mostly downward
+10. wind wisps no longer look like sideways rain
+11. location / forecast / widget / wallpaper behavior remains intact
+12. background/resume remains stable
+13. frame pacing / heat / battery remain acceptable
 
 ## Merge rule
-PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green 0.6.0 APK passes the Samsung visual gate.
+PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green 0.7.0 APK passes the Samsung visual gate.
 
 ## Next step
-Run exact-head CI on the 0.6.0 hybrid renderer. If green, install that exact APK immediately and compare it against the latest failed Samsung screenshot and the approved Atmosynq mockup.
+Run exact-head CI on v0.7.0. Root-cause any real compiler/test failure from logs. Once green, install that exact APK immediately and judge the complete top-to-bottom layout against the current Samsung screenshot, not against code intent.
