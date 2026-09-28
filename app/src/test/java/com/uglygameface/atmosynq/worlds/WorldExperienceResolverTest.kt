@@ -107,8 +107,19 @@ class WorldExperienceResolverTest {
             )
 
         worlds.flatMap { it.eyeSpyTargets }.forEach { target ->
-            assertTrue(target.xFraction in 0f..1f)
-            assertTrue(target.yFraction in 0f..1f)
+            val region = target.region
+            assertTrue(region.left in 0f..1f)
+            assertTrue(region.top in 0f..1f)
+            assertTrue(region.right in 0f..1f)
+            assertTrue(region.bottom in 0f..1f)
+            assertTrue(region.left < region.right)
+            assertTrue(region.top < region.bottom)
+            assertTrue(
+                region.contains(
+                    region.centerX,
+                    region.centerY
+                )
+            )
         }
     }
 
