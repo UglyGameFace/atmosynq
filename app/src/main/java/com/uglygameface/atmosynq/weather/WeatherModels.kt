@@ -1,5 +1,6 @@
 package com.uglygameface.atmosynq.weather
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 data class WeatherSnapshot(
@@ -95,7 +96,140 @@ data class WeatherReport(
     val current: WeatherSnapshot,
     val hourly: List<HourlyForecast>,
     val daily: List<DailyForecast>
-)
+) {
+    fun toJson(): String =
+        JSONObject().apply {
+            put("current", JSONObject(current.toJson()))
+            put(
+                "hourly",
+                JSONArray().apply {
+                    hourly.forEach { hour ->
+                        put(
+                            JSONObject().apply {
+                                put("timeIsoLocal", hour.timeIsoLocal)
+                                put("temperatureC", hour.temperatureC)
+                                put("apparentTemperatureC", hour.apparentTemperatureC)
+                                put(
+                                    "precipitationProbabilityPct",
+                                    hour.precipitationProbabilityPct
+                                )
+                                put("weatherCode", hour.weatherCode)
+                                put("windSpeedKmh", hour.windSpeedKmh)
+                                put("isDay", hour.isDay)
+                            }
+                        )
+                    }
+                }
+            )
+            put(
+                "daily",
+                JSONArray().apply {
+                    daily.forEach { day ->
+                        put(
+                            JSONObject().apply {
+                                put("dateIso", day.dateIso)
+                                put("weatherCode", day.weatherCode)
+                                put("highC", day.highC)
+                                put("lowC", day.lowC)
+                                put(
+                                    "precipitationProbabilityPct",
+                                    day.precipitationProbabilityPct
+                                )
+                                put("sunriseIsoLocal", day.sunriseIsoLocal)
+                                put("sunsetIsoLocal", day.sunsetIsoLocal)
+                            }
+                        )
+                    }
+                }
+            )
+        }.toString()
+
+    companion object {
+        fun fromJson(raw: String): WeatherReport? =
+            runCatching {
+                val root = JSONObject(raw)
+                val current =
+                    WeatherSnapshot.fromJson(
+                        root.getJSONObject("current").toString()
+                    ) ?: return@runCatching null
+
+                val hourlyJson = root.optJSONArray("hourly") ?: JSONArray()
+                val hourly =
+                    buildList {
+                        repeat(hourlyJson.length()) { index ->
+                            val item = hourlyJson.getJSONObject(index)
+                            add(
+                                HourlyForecast(
+                                    timeIsoLocal =
+                                        item.getString("timeIsoLocal"),
+                                    temperatureC =
+                                        item.optDouble("temperatureC", 0.0),
+                                    apparentTemperatureC =
+                                        item.optDouble(
+                                            "apparentTemperatureC",
+                                            item.optDouble("temperatureC", 0.0)
+                                        ),
+                                    precipitationProbabilityPct =
+                                        item.optInt(
+                                            "precipitationProbabilityPct",
+                                            0
+                                        ),
+                                    weatherCode =
+                                        item.optInt("weatherCode", 0),
+                                    windSpeedKmh =
+                                        item.optDouble("windSpeedKmh", 0.0),
+                                    isDay =
+                                        item.optBoolean("isDay", false)
+                                )
+                            )
+                        }
+                    }
+
+                val dailyJson = root.optJSONArray("daily") ?: JSONArray()
+                val daily =
+                    buildList {
+                        repeat(dailyJson.length()) { index ->
+                            val item = dailyJson.getJSONObject(index)
+                            add(
+                                DailyForecast(
+                                    dateIso =
+                                        item.getString("dateIso"),
+                                    weatherCode =
+                                        item.optInt("weatherCode", 0),
+                                    highC =
+                                        item.optDouble("highC", 0.0),
+                                    lowC =
+                                        item.optDouble("lowC", 0.0),
+                                    precipitationProbabilityPct =
+                                        item.optInt(
+                                            "precipitationProbabilityPct",
+                                            0
+                                        ),
+                                    sunriseIsoLocal =
+                                        item.optString("sunriseIsoLocal")
+                                            .takeIf {
+                                                it.isNotBlank() &&
+                                                    it != "null"
+                                            },
+                                    sunsetIsoLocal =
+                                        item.optString("sunsetIsoLocal")
+                                            .takeIf {
+                                                it.isNotBlank() &&
+                                                    it != "null"
+                                            }
+                                )
+                            )
+                        }
+                    }
+
+                WeatherReport(
+                    current = current,
+                    hourly = hourly,
+                    daily = daily
+                )
+            }.getOrNull()
+    }
+}
 
 data class WeatherVisualState(
     val daylight: Float,
