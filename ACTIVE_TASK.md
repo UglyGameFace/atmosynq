@@ -1,196 +1,168 @@
 # Active Task
 
-## Active outcome
-Ship the Atmosynq Android dashboard as a distinctive premium weather product before cutoff, with believable weather motion, cinematic location-aware scenery, and a layout that does not look like a generic Android weather app.
+## Active task / outcome
+Turn the Atmosynq Android dashboard into an actually interactive weather product: repair decorative/dead controls, make the live scene enterable, and establish Atmosynq Worlds as the retention layer for weather-reactive exploration.
 
 ## Scope lock
-This remains the single active task. Do not switch to iOS, Xiaomi rear-display work, unrelated widget redesign, live-wallpaper renderer migration, or another project until the Android dashboard clears the Samsung visual gate.
+This is the single active task. Keep work inside the Android dashboard / Atmosynq Worlds interaction path until the exact-head build and Samsung device gate pass.
+
+Do not switch to iOS, Xiaomi rear-display work, live-wallpaper renderer migration, unrelated widget redesign, or a custom Vulkan rewrite during this task.
 
 ## Branch / PR
 - branch: `feat/v0.4.1-interactive-weather-portal`
 - draft PR: #12
 - production baseline at task start: `c713b52f62850ffa65441ba09f4377097115c797`
-- current target: 0.7.0 / versionCode 15
+- pre-Worlds v0.7 head: `47f98f55d29973faa3244683b4f82cd2eebc408f`
+- current target: 0.8.0 / versionCode 16
 - Filament: 1.77.1
 
-## Device evidence leading to v0.7.0
-The exact green v0.6.0 Samsung build proved the cinematic hybrid backdrop is a major improvement over the toy procedural settlement, but the product shell still failed the premium-layout bar.
+## Root cause / findings
+The v0.7 Atmosphere Deck looked interactive in several places without having complete action paths.
 
-Observed issues:
-- dashboard still read as stacked generic rounded cards
-- top brand + controls consumed too much visual attention without feeling distinctive
-- Animated / Static and sync were separate generic blocks
-- hero metrics were still one large generic glass rectangle
-- secondary actions looked like ordinary Android buttons
-- hourly forecast looked like standard cards
-- daily forecast looked like a plain list
-- the rain / wind visualization could read as sideways precipitation
+Confirmed defects:
+- `TIMELINE ›` was plain decorative TextView content with no click handler.
+- `FULL FORECAST ›` was plain decorative TextView content with no click handler.
+- `FilamentWeatherHeroView` detected scene taps, but `performClick()` only produced the existing touch pulse; MainActivity attached no scene-navigation action.
+- the top-right Live Sky control only explained interaction in a dialog rather than opening an interactive experience.
 
-The next build therefore treats the entire dashboard layout as a product system, not a series of component tweaks.
+Existing controls that already had real handlers were preserved:
+- LIVE / STILL
+- sync / refresh
+- settings
+- location
+- widget
+- live wallpaper
 
-## v0.7.0 visual system: Atmosphere Deck
+## Implemented v0.8 interaction repair
 
-### Orbit Header
-The top of the app is rebuilt into a compact asymmetric header:
-- horizontal Atmosynq wordmark on the left
-- micro-brand line: `WEATHER THAT COMES ALIVE`
-- compact settings control on the right
-- cyan-to-violet spectrum divider
+### Real forecast actions
+The shared forecast header now requires an action callback.
 
-The old centered-logo / centered-tagline stack is removed.
+- `TIMELINE ›` opens a real 12-hour forecast view with time, condition, temperature, rain probability and wind.
+- `FULL FORECAST ›` opens a real 7-day detail view with condition, high, low and rain probability.
+- unsynced forecast actions request/refresh weather instead of silently doing nothing.
 
-### Atmosphere Control Deck
-Animated / Static and sync status now live inside one shared glass surface.
+### Enterable live scene
+The dashboard weather scene is now a real doorway:
+- tapping the hero launches `WorldExploreActivity`
+- current weather is transferred into the world as serialized `WeatherSnapshot`
+- saved location is resolved into the same `SceneProfile`
+- the same `FilamentWeatherHeroView` is reused full-screen
+- drag and pinch remain available inside the world
+- the top-right scene menu offers Explore, Eye Spy, and actual controls help
 
-Motion modes are renamed:
-- `LIVE`
-- `STILL`
+### Atmosynq Worlds foundation
+`WorldExperienceResolver` maps the current weather + location profile into a world identity:
 
-Sync language is compact:
-- `OFFLINE`
-- `SYNCING…`
-- `SEARCHING…`
-- `LOCATING…`
-- `● LIVE • <time> ↻`
+- CABIN / Fireside Highlands
+- STORM / Storm Watch
+- CITY / Skyline Drift
+- COAST / Weather Pier
+- FOREST / Weather Trail
 
-This removes a full row of generic UI and makes the mode/status relationship feel intentional.
+World selection reacts to:
+- snow
+- precipitation / thunderstorms
+- settlement size
+- terrain
+- latitude band
 
-### Live Sky Hero
-The hero becomes the visual identity of the app:
-- 30 dp cinematic shell
-- stronger top/bottom readability scrim
-- vertical cyan → indigo → violet signature spectrum rail
-- `NOW // LIVE SKY` eyebrow
-- location line
-- larger 84 sp temperature
-- stronger condition hierarchy
-- scene control remains available in the top-right
+This is the stable product contract for later asset-backed scene-specific interactions. It avoids hardcoding feature logic into MainActivity.
 
-The cinematic / Filament hybrid scene pipeline remains underneath this layout.
+### Daily Eye Spy
+The first repeatable world activity is live:
+- each world owns scene-appropriate hidden targets
+- targets use normalized coordinates so the interaction scales across phone sizes
+- targets remain invisible; the UI does not point at the answer
+- correct / miss feedback appears at the tapped position
+- target order rotates by local world date
+- Eye Spy can launch directly from the dashboard scene menu
 
-### Metric Clusters
-The previous one-piece metrics panel is removed.
+### Daily progress / retention
+`WorldProgressStore` persists:
+- daily completion per world type
+- replay state
+- consecutive-day world streak
 
-The hero now ends in a modular two-cluster dock:
-- thermal + humidity
-- wind + visibility
+Multiple world types can be completed on the same date without clobbering each other.
 
-A separate lower strip carries:
-- precipitation
-- sunrise / sunset
+Pure streak policy has regression coverage for:
+- consecutive-day increment
+- skipped-day reset
+- duplicate same-day completion
 
-This gives the hero layered depth instead of one generic translucent rectangle.
+## Files added
+- `app/src/main/java/com/uglygameface/atmosynq/WorldExploreActivity.kt`
+- `app/src/main/java/com/uglygameface/atmosynq/worlds/WorldExperience.kt`
+- `app/src/main/java/com/uglygameface/atmosynq/worlds/WorldProgressStore.kt`
+- `app/src/test/java/com/uglygameface/atmosynq/worlds/WorldExperienceResolverTest.kt`
+- `app/src/test/java/com/uglygameface/atmosynq/worlds/WorldStreakPolicyTest.kt`
 
-### Atmosphere Dock
-Wallpaper, location and widget actions are grouped into one product surface:
-- micro header `ATMOSPHERE DOCK / MAKE IT YOURS`
-- large primary Live Wallpaper action
-- compact Location and Widget secondary controls
-- press-scale interaction feedback
+## Files changed
+- `app/src/main/java/com/uglygameface/atmosynq/MainActivity.kt`
+- `app/src/main/AndroidManifest.xml`
+- `app/build.gradle.kts`
 
-### Forecast Stream
-Forecast sections now use a distinct "stream" language:
-- cyan/violet vertical spectrum rail in section headers
-- `FORECAST STREAM` eyebrow
-- timeline action on hourly forecast
-- full forecast action on daily forecast
+## Validation so far
+### Green intermediate head
+`034b42eea82e3fb2fe8622639d0cb3c95335fcd5`
+- Actions run #145 passed
+- production Filament scene generation passed
+- unit tests passed
+- Android compilation/resource processing passed
+- debug APK assembly passed
+- artifact upload passed
 
-Hourly cards now include:
-- stronger active `NOW` state
-- uppercase time
-- weather icon
-- temperature
-- `RAIN xx%` label
-- cyan→violet precipitation probability rail
+### Green interaction + daily progress head
+`9b7ccf39d8e30c19c3aa931a2e67ddefe64ab2bc`
+- Actions run #148 passed
+- production Filament scene generation passed
+- World resolver tests passed
+- streak policy tests passed
+- full unit-test suite passed
+- Android compilation/resource processing passed
+- debug APK assembly passed
+- artifact upload passed
 
-Daily rows now include:
-- one-line day
-- icon
-- one-line condition
-- high / low
-- precipitation pill
-- precipitation probability rail
-- independent rounded row surface rather than generic separators
+## Samsung device gate
+The task is not complete until the exact green v0.8 APK is tested on the Samsung.
 
-## Rain / wind physics correction
-The old wind visualization used full-width horizontal streaks and rain slant was based on screen width. On-device this could read as rain flying sideways.
+Verify:
+1. tapping the hero opens Atmosynq Worlds
+2. full-screen scene renders rather than black/blank/fallback failure
+3. drag and pinch still work inside the world
+4. back returns cleanly to dashboard
+5. scene menu Explore opens the world
+6. scene menu Start Eye Spy opens the world with the challenge active
+7. Eye Spy does not reveal target positions
+8. correct and miss taps give visible feedback
+9. completion persists after leaving/re-entering
+10. replay does not increase the same-day streak
+11. next-day completion advances the streak
+12. `TIMELINE ›` opens real hourly detail
+13. `FULL FORECAST ›` opens real daily detail
+14. location / widget / wallpaper / motion / refresh controls still work
+15. background/resume is stable
+16. heat, frame pacing and battery remain acceptable
 
-v0.7.0 changes:
-- wind is represented by a few low-opacity curved upper-sky wisps
-- wind no longer draws bright horizontal lines across the whole hero
-- rain slant is derived from drop length rather than screen width
-- wind influence is capped
-- rain therefore falls primarily downward even in moderate wind
+## Important boundary
+The interactive framework is now real, but the production-quality enterable cabin interior / fireplace / marshmallow scene asset is not yet shipped in this slice.
 
-## Cinematic hybrid renderer retained
-For lowland temperate town/local profiles such as the Samsung Shelton test:
-- cinematic raster environment is primary
-- drag parallax remains
-- Animated mode adds slow scene drift
-- weather/time calibrates scene color
-- live rain/snow/fog/thunder FX remain above it
+Do not fake that with low-detail procedural boxes. The next visual-content phase should attach production assets and scene-specific interactions to the Worlds contract only after this interaction foundation passes the Samsung gate.
 
-Filament remains active for uncovered profiles and retains:
-- HDR
-- PCSS
-- TAA + 4x MSAA
-- ULTRA AO + bent normals
-- SSR / refraction
-- native fog
-- dynamic resolution
-- color grading
-- interactive camera infrastructure
-
-## Worldwide location support retained
-- global city search
-- city + state/province/country search
-- ZIP / postal search
-- no location permission required for manual search
-- optional approximate current location
-- terrain relief sampling
-- settlement / terrain / latitude classification
-- selected-place persistence
-
-## Functional behavior retained
-- Open-Meteo weather
-- hourly forecast
-- 7-day forecast
-- LIVE / STILL preference
-- drag / pinch / tap
-- widget pinning
-- wallpaper picker
-- live wallpaper renderer
-- old saved-location compatibility
-- Filament fallback
-
-## Exact-head CI gate
-The final 0.7.0 head must pass:
-- cinematic backdrop asset test
-- production Filament scene generation
-- geocoder / scene / weather / wallpaper regression tests
-- Kotlin compilation
-- Android resource processing
-- debug APK assembly
-- artifact upload
-
-## Samsung visual gate
-Install the exact green 0.7.0 APK and verify:
-1. top header feels compact and branded rather than generic
-2. LIVE / STILL + sync control reads as one intentional deck
-3. hero feels like the product centerpiece
-4. metric clusters are readable and no longer look like one generic glass table
-5. action dock feels integrated and premium
-6. hourly timeline is visually distinct
-7. daily rows stay aligned and Tomorrow never wraps
-8. precipitation rails reflect percentages
-9. rain falls mostly downward
-10. wind wisps no longer look like sideways rain
-11. location / forecast / widget / wallpaper behavior remains intact
-12. background/resume remains stable
-13. frame pacing / heat / battery remain acceptable
+## Backlog after this task clears
+- production cabin interior scene with fireplace + marshmallow roast
+- storm lightning hunt / photography interaction
+- coast stone-skipping interaction
+- forest wind / leaf interaction
+- city rooftop interaction
+- weather-event-only discoveries
+- night-only / seasonal secrets
+- shareable Atmosynq Moments
+- richer scene assets / materials before considering a custom Vulkan renderer
 
 ## Merge rule
-PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green 0.7.0 APK passes the Samsung visual gate.
+PR #12 remains draft. Do not merge and do not call the task complete until final exact-head CI is green and the v0.8 Samsung interaction gate is exercised.
 
 ## Next step
-Run exact-head CI on v0.7.0. Root-cause any real compiler/test failure from logs. Once green, install that exact APK immediately and judge the complete top-to-bottom layout against the current Samsung screenshot, not against code intent.
+Run final exact-head CI after this task-record update, inspect the final diff for accidental changes, then use the exact green v0.8 APK for Samsung device validation.
