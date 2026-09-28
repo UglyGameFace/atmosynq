@@ -170,61 +170,21 @@ class MainActivity : Activity() {
                 clipChildren = false
             }
 
-        val brandChip =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(6), dp(4), dp(11), dp(4))
-                background =
-                    gradientBackground(
-                        intArrayOf(
-                            Color.argb(238, 5, 18, 35),
-                            Color.argb(238, 8, 30, 54)
-                        ),
-                        25,
-                        Color.rgb(58, 173, 255)
-                    )
-                elevation = dp(5).toFloat()
-            }
-
         brandLogo =
             ImageView(this).apply {
-                setImageResource(R.drawable.atmosynq_logo)
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                setImageResource(
+                    R.drawable.atmosynq_horizontal_logo
+                )
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                adjustViewBounds = true
                 contentDescription = "Atmosynq"
             }
-        brandChip.addView(
-            brandLogo,
-            LinearLayout.LayoutParams(
-                dp(34),
-                dp(34)
-            )
-        )
-        brandChip.addView(
-            TextView(this).apply {
-                text = "Atmosynq"
-                textSize = 20f
-                setTextColor(Color.WHITE)
-                typeface =
-                    Typeface.create(
-                        "sans-serif-light",
-                        Typeface.NORMAL
-                    )
-                letterSpacing = 0.015f
-                includeFontPadding = false
-                setPadding(dp(8), 0, 0, 0)
-            },
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
 
         brandHeader.addView(
-            brandChip,
+            brandLogo,
             FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(46),
+                dp(214),
+                dp(54),
                 Gravity.CENTER
             )
         )
@@ -232,14 +192,14 @@ class MainActivity : Activity() {
         brandHeader.addView(
             TextView(this).apply {
                 text = "⚙"
-                textSize = 23f
+                textSize = 22f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(220, 239, 252))
                 background =
                     roundedBackground(
-                        Color.argb(178, 7, 25, 43),
+                        Color.argb(160, 5, 21, 38),
                         22,
-                        Color.argb(170, 75, 150, 205)
+                        Color.argb(132, 75, 150, 205)
                     )
                 contentDescription = "Atmosynq settings"
                 setOnClickListener {
@@ -247,8 +207,8 @@ class MainActivity : Activity() {
                 }
             },
             FrameLayout.LayoutParams(
-                dp(44),
-                dp(44),
+                dp(42),
+                dp(42),
                 Gravity.END or Gravity.CENTER_VERTICAL
             )
         )
@@ -257,9 +217,9 @@ class MainActivity : Activity() {
             brandHeader,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(50)
+                dp(58)
             ).apply {
-                bottomMargin = dp(3)
+                bottomMargin = dp(1)
             }
         )
 
@@ -269,7 +229,7 @@ class MainActivity : Activity() {
                 textSize = 13f
                 setTextColor(COLOR_TEXT_SECONDARY)
                 gravity = Gravity.CENTER
-                setPadding(0, 0, 0, dp(11))
+                setPadding(0, 0, 0, dp(8))
             },
             matchWrap()
         )
