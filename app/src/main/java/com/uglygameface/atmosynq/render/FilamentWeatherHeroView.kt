@@ -586,10 +586,10 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             if (!locationResolved) {
                 0.0f
             } else when (sceneProfile.settlement) {
-                SettlementKind.METRO -> 0.08f
-                SettlementKind.CITY -> 0.22f
-                SettlementKind.TOWN -> 0.48f
-                SettlementKind.LOCAL -> 0.24f
+                SettlementKind.METRO -> 0.10f
+                SettlementKind.CITY -> 0.14f
+                SettlementKind.TOWN -> 0.0f
+                SettlementKind.LOCAL -> 0.0f
             }
         // The v0.5.1 device build exposed the lamp heads as floating lights.
         // Remove this layer completely until the fixtures are modeled and lit
@@ -730,13 +730,10 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     }
 
     private fun cloudVisualScale(): Float {
-        val weather = snapshot ?: return 0.0f
-        val cloud =
-            (weather.cloudCoverPct / 100.0)
-                .coerceIn(0.0, 1.0)
-                .toFloat()
-        return (0.38f + cloud * 0.34f)
-            .coerceIn(0.38f, 0.72f)
+        // The generated cloud meshes still read as obvious geometry on the Samsung.
+        // Keep them in the asset for future volumetric material work, but hide them
+        // now. WeatherFxOverlayView owns the soft cloud deck instead.
+        return 0.0f
     }
 
     private fun animateScene(v: ModelViewer, seconds: Float) {
