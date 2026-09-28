@@ -32,6 +32,8 @@ class CinematicBackdropView(context: Context) : View(context) {
     private val destination = RectF()
 
     private var bitmap: Bitmap? = null
+    private var activeAssetPath: String = TEMPERATE_TOWN_ASSET
+    private var forcedAsset = false
     private var profile: SceneProfile = SceneProfile.DEFAULT
     private var snapshot: WeatherSnapshot? = null
     private var animated = true
@@ -45,24 +47,71 @@ class CinematicBackdropView(context: Context) : View(context) {
     private var focusAnimator: ValueAnimator? = null
 
     init {
-        bitmap =
-            runCatching {
-                context.assets.open(TEMPERATE_TOWN_ASSET)
-                    .use(BitmapFactory::decodeStream)
-            }.getOrNull()
+        bitmap = decodeAsset(TEMPERATE_TOWN_ASSET)
         setLayerType(LAYER_TYPE_HARDWARE, null)
     }
 
     fun canRender(profile: SceneProfile): Boolean =
         bitmap != null &&
-            profile.terrain != TerrainKind.MOUNTAIN &&
-            profile.settlement != SettlementKind.METRO &&
             (
-                profile.latitudeBand == LatitudeBand.TEMPERATE ||
-                    profile.latitudeBand == LatitudeBand.COOL ||
-                    profile.settlement == SettlementKind.TOWN ||
-                    profile.settlement == SettlementKind.LOCAL
+                forcedAsset ||
+                    (
+                        profile.terrain != TerrainKind.MOUNTAIN &&
+                            profile.settlement != SettlementKind.METRO &&
+                            (
+                                profile.latitudeBand == LatitudeBand.TEMPERATE ||
+                                    profile.latitudeBand == LatitudeBand.COOL ||
+                                    profile.settlement == SettlementKind.TOWN ||
+                                    profile.settlement == SettlementKind.LOCAL
+                                )
+                        )
                 )
+
+    fun setSceneAsset(assetPath: String?) {
+        val resolved =
+            assetPath
+                ?.takeIf { it.isNotBlank() }
+                ?: TEMPERATE_TOWN_ASSET
+
+        if (resolved == activeAssetPath && bitmap != null) {
+            forcedAsset = assetPath != null
+            invalidate()
+            return
+        }
+
+        val decoded = decodeAsset(resolved)
+        if (decoded == null) {
+            if (assetPath != null) {
+                forcedAsset = false
+            }
+            return
+        }
+
+        val previous = bitmap
+        bitmap = decoded
+        activeAssetPath = resolved
+        forcedAsset = assetPath != null
+        focusAnimator?.cancel()
+        interactiveZoom = 1f
+        focusU = 0.5f
+        focusV = 0.5f
+        destination.setEmpty()
+        invalidate()
+
+        if (
+            previous != null &&
+            previous !== decoded &&
+            !previous.isRecycled
+        ) {
+            previous.recycle()
+        }
+    }
+
+    private fun decodeAsset(path: String): Bitmap? =
+        runCatching {
+            context.assets.open(path)
+                .use(BitmapFactory::decodeStream)
+        }.getOrNull()
 
     fun setSceneProfile(profile: SceneProfile) {
         this.profile = profile
