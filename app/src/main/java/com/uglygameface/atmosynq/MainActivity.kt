@@ -5,7 +5,6 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -23,7 +22,6 @@ import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.Looper
 import android.provider.Settings
-import android.text.InputType
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.WindowInsets
@@ -32,7 +30,6 @@ import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -55,6 +52,7 @@ import com.uglygameface.atmosynq.weather.WeatherReport
 import com.uglygameface.atmosynq.widget.AtmosynqWidgetProvider
 import com.uglygameface.atmosynq.render.FilamentWeatherHeroView
 import com.uglygameface.atmosynq.render.SceneProfileResolver
+import com.uglygameface.atmosynq.ui.AtmosynqSheet
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -1160,30 +1158,38 @@ class MainActivity : Activity() {
     }
 
     private fun showSceneMenu() {
-        AlertDialog.Builder(this)
-            .setTitle("Atmosynq World")
-            .setItems(
-                arrayOf(
-                    "Explore this weather world",
-                    "Start Eye Spy",
-                    "Scene controls"
+        AtmosynqSheet.showMenu(
+            activity = this,
+            title = "Atmosynq World",
+            subtitle =
+                "Enter the live scene, start today's discovery, or review the scene controls.",
+            actions =
+                listOf(
+                    AtmosynqSheet.Action(
+                        title = "EXPLORE THIS WEATHER WORLD",
+                        detail = "Step into the scene and move through the atmosphere."
+                    ) {
+                        openWorldExplorer(startEyeSpy = false)
+                    },
+                    AtmosynqSheet.Action(
+                        title = "START DAILY EYE SPY",
+                        detail = "Find today's hidden details inside the current world."
+                    ) {
+                        openWorldExplorer(startEyeSpy = true)
+                    },
+                    AtmosynqSheet.Action(
+                        title = "SCENE CONTROLS",
+                        detail = "Drag to look around • pinch to zoom • tap to enter."
+                    ) {
+                        AtmosynqSheet.showMessage(
+                            activity = this,
+                            title = "Live Sky controls",
+                            message =
+                                "Drag horizontally to look around, pinch to zoom, or tap the scene to enter Atmosynq Worlds. Weather, lighting and effects follow the selected location."
+                        )
+                    }
                 )
-            ) { _, which ->
-                when (which) {
-                    0 -> openWorldExplorer(startEyeSpy = false)
-                    1 -> openWorldExplorer(startEyeSpy = true)
-                    2 ->
-                        AlertDialog.Builder(this)
-                            .setTitle("Live Sky controls")
-                            .setMessage(
-                                "Drag horizontally to look around, pinch to zoom, or tap the scene to enter Atmosynq Worlds. Weather and lighting follow the selected location."
-                            )
-                            .setPositiveButton("Done", null)
-                            .show()
-                }
-            }
-            .setNegativeButton("Close", null)
-            .show()
+        )
     }
 
     private fun openWorldExplorer(startEyeSpy: Boolean) {
@@ -1212,44 +1218,17 @@ class MainActivity : Activity() {
             return
         }
 
-        val rows =
-            nextHourly(report).joinToString("\n\n") { hour ->
-                val time =
-                    parseLocalDateTime(hour.timeIsoLocal)
-                        ?.format(
-                            DateTimeFormatter.ofPattern(
-                                "EEE h:mm a",
-                                Locale.getDefault()
-                            )
-                        )
-                        ?: hour.timeIsoLocal
-
-                buildString {
-                    append(time)
-                    append("   ")
-                    append(formatTemperature(hour.temperatureC))
-                    append("\n")
-                    append(
-                        WeatherCode.description(
-                            hour.weatherCode
-                        )
-                    )
-                    append("  •  Rain ")
-                    append(hour.precipitationProbabilityPct)
-                    append("%  •  Wind ")
-                    append(formatWind(hour.windSpeedKmh))
-                }
-            }
-
-        AlertDialog.Builder(this)
-            .setTitle("Next 12 Hours")
-            .setMessage(
-                rows.ifBlank {
-                    "No hourly forecast is available yet."
-                }
-            )
-            .setPositiveButton("Done", null)
-            .show()
+        startActivity(
+            Intent(this, ForecastActivity::class.java)
+                .putExtra(
+                    ForecastActivity.EXTRA_REPORT_JSON,
+                    report.toJson()
+                )
+                .putExtra(
+                    ForecastActivity.EXTRA_MODE,
+                    ForecastActivity.MODE_HOURLY
+                )
+        )
     }
 
     private fun showFullForecast() {
@@ -1260,75 +1239,71 @@ class MainActivity : Activity() {
             return
         }
 
-        val rows =
-            report.daily.take(7)
-                .mapIndexed { index, day ->
-                    buildString {
-                        append(dayLabel(day.dateIso, index))
-                        append("   ")
-                        append(
-                            WeatherCode.description(
-                                day.weatherCode
-                            )
-                        )
-                        append("\n")
-                        append("High ")
-                        append(formatTemperature(day.highC))
-                        append("  •  Low ")
-                        append(formatTemperature(day.lowC))
-                        append("  •  Rain ")
-                        append(day.precipitationProbabilityPct)
-                        append("%")
-                    }
-                }
-                .joinToString("\n\n")
-
-        AlertDialog.Builder(this)
-            .setTitle("7-Day Forecast")
-            .setMessage(
-                rows.ifBlank {
-                    "No daily forecast is available yet."
-                }
-            )
-            .setPositiveButton("Done", null)
-            .show()
+        startActivity(
+            Intent(this, ForecastActivity::class.java)
+                .putExtra(
+                    ForecastActivity.EXTRA_REPORT_JSON,
+                    report.toJson()
+                )
+                .putExtra(
+                    ForecastActivity.EXTRA_MODE,
+                    ForecastActivity.MODE_DAILY
+                )
+        )
     }
 
     private fun showQuickSettings() {
         val animated = motionStore.isAnimated()
         val motionLabel =
             if (animated) {
-                "Switch to Static mode"
+                "SWITCH TO STILL MODE"
             } else {
-                "Switch to Animated mode"
+                "SWITCH TO LIVE MODE"
             }
 
-        AlertDialog.Builder(this)
-            .setTitle("Atmosynq")
-            .setItems(
-                arrayOf(
-                    "Choose location",
-                    "Refresh weather",
-                    motionLabel,
-                    "Location & privacy"
+        AtmosynqSheet.showMenu(
+            activity = this,
+            title = "Atmosynq Control",
+            subtitle =
+                "Weather, motion and privacy controls without leaving the atmosphere.",
+            actions =
+                listOf(
+                    AtmosynqSheet.Action(
+                        title = "CHOOSE LOCATION",
+                        detail = "Search worldwide by city, region, ZIP or postal code."
+                    ) {
+                        showLocationChooser()
+                    },
+                    AtmosynqSheet.Action(
+                        title = "REFRESH WEATHER",
+                        detail = "Pull the latest conditions for the selected location."
+                    ) {
+                        refreshSavedWeather()
+                    },
+                    AtmosynqSheet.Action(
+                        title = motionLabel,
+                        detail =
+                            if (animated) {
+                                "Freeze ambient motion while keeping the weather data live."
+                            } else {
+                                "Restore animated atmosphere and weather motion."
+                            }
+                    ) {
+                        setMotionMode(!animated)
+                    },
+                    AtmosynqSheet.Action(
+                        title = "LOCATION & PRIVACY",
+                        detail = "See exactly how location access works."
+                    ) {
+                        AtmosynqSheet.showMessage(
+                            activity = this,
+                            title = "Location & privacy",
+                            message =
+                                "City and postal-code search works without device location permission. Approximate current location is optional. Atmosynq does not require background location."
+                        )
+                    }
                 )
-            ) { _, which ->
-                when (which) {
-                    0 -> showLocationChooser()
-                    1 -> refreshSavedWeather()
-                    2 -> setMotionMode(!animated)
-                    3 ->
-                        AlertDialog.Builder(this)
-                            .setTitle("Location & privacy")
-                            .setMessage(
-                                "City and postal-code search works without device location permission. Approximate current location is optional and Atmosynq does not require background location."
-                            )
-                            .setPositiveButton("OK", null)
-                            .show()
-                }
-            }
-            .setNegativeButton("Close", null)
-            .show()
+        )
     }
 
     private fun refreshSavedWeather() {
@@ -1347,72 +1322,39 @@ class MainActivity : Activity() {
     }
 
     private fun showLocationChooser() {
-        AlertDialog.Builder(this)
-            .setTitle("Choose weather location")
-            .setItems(
-                arrayOf(
-                    "Search city or postal code",
-                    "Use approximate current location"
+        AtmosynqSheet.showMenu(
+            activity = this,
+            title = "Choose weather location",
+            subtitle =
+                "Use a city or postal code without sharing device location, or use approximate location when you want it.",
+            actions =
+                listOf(
+                    AtmosynqSheet.Action(
+                        title = "SEARCH CITY OR POSTAL CODE",
+                        detail = "Worldwide search • no location permission required."
+                    ) {
+                        showLocationSearchDialog()
+                    },
+                    AtmosynqSheet.Action(
+                        title = "USE APPROXIMATE LOCATION",
+                        detail = "Uses device location only after you approve permission."
+                    ) {
+                        requestOrCaptureLocation()
+                    }
                 )
-            ) { _, which ->
-                when (which) {
-                    0 -> showLocationSearchDialog()
-                    1 -> requestOrCaptureLocation()
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        )
     }
 
     private fun showLocationSearchDialog() {
-        val input =
-            EditText(this).apply {
-                hint = "City, region/country, or postal code"
-                inputType =
-                    InputType.TYPE_CLASS_TEXT or
-                        InputType.TYPE_TEXT_FLAG_CAP_WORDS
-                setSingleLine(true)
-                setPadding(dp(18), dp(12), dp(18), dp(12))
-            }
-
-        val container =
-            FrameLayout(this).apply {
-                setPadding(dp(18), dp(4), dp(18), 0)
-                addView(
-                    input,
-                    FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
-                )
-            }
-
-        val dialog =
-            AlertDialog.Builder(this)
-                .setTitle("Search anywhere")
-                .setMessage(
-                    "Enter a city, city + state/province/country, or postal code. No location permission is needed."
-                )
-                .setView(container)
-                .setPositiveButton("Search", null)
-                .setNegativeButton("Cancel", null)
-                .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener {
-                    val query = input.text?.toString()?.trim().orEmpty()
-                    if (query.length < 2) {
-                        input.error = "Enter at least 2 characters"
-                        return@setOnClickListener
-                    }
-
-                    dialog.dismiss()
-                    searchGlobalLocation(query)
-                }
+        AtmosynqSheet.showTextInput(
+            activity = this,
+            title = "Search anywhere",
+            subtitle =
+                "Enter a city, city + state/province/country, ZIP or postal code. No device-location permission is required.",
+            hint = "City, region/country, ZIP or postal code"
+        ) { query ->
+            searchGlobalLocation(query)
         }
-
-        dialog.show()
     }
 
     private fun searchGlobalLocation(query: String) {
@@ -1452,20 +1394,19 @@ class MainActivity : Activity() {
         query: String,
         places: List<PlaceSearchResult>
     ) {
-        val labels =
-            places.map { place ->
-                place.displayLabel()
-            }.toTypedArray()
-
-        AlertDialog.Builder(this)
-            .setTitle("Select location")
-            .setItems(labels) { _, which ->
-                places.getOrNull(which)?.let { place ->
-                    selectSearchedPlace(query, place)
+        AtmosynqSheet.showList(
+            activity = this,
+            title = "Select location",
+            subtitle = "Results for “$query”",
+            items =
+                places.map { place ->
+                    place.displayLabel()
                 }
+        ) { which ->
+            places.getOrNull(which)?.let { place ->
+                selectSearchedPlace(query, place)
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
     }
 
     private fun selectSearchedPlace(
