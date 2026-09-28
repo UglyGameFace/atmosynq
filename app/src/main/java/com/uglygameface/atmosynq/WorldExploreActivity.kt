@@ -24,6 +24,9 @@ import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import com.uglygameface.atmosynq.worlds.EyeSpyTarget
 import com.uglygameface.atmosynq.worlds.WorldExperience
 import com.uglygameface.atmosynq.worlds.WorldExperienceResolver
+import com.uglygameface.atmosynq.worlds.WorldProgressStore
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.math.hypot
 
 class WorldExploreActivity : Activity() {
@@ -32,6 +35,9 @@ class WorldExploreActivity : Activity() {
     private lateinit var eyeSpyOverlay: EyeSpyOverlayView
 
     private lateinit var experience: WorldExperience
+    private lateinit var dailyTargets: List<EyeSpyTarget>
+    private lateinit var worldDate: LocalDate
+    private val progressStore by lazy { WorldProgressStore(this) }
     private var eyeSpyActive = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +57,28 @@ class WorldExploreActivity : Activity() {
                 profile = profile,
                 weather = weather
             )
+
+        val worldZone =
+            weather?.timezone
+                ?.let { zoneId ->
+                    runCatching {
+                        ZoneId.of(zoneId)
+                    }.getOrNull()
+                }
+                ?: ZoneId.systemDefault()
+        worldDate = LocalDate.now(worldZone)
+        dailyTargets =
+            experience.eyeSpyTargets
+                .let { targets ->
+                    if (targets.isEmpty()) {
+                        targets
+                    } else {
+                        val offset =
+                            worldDate.dayOfYear % targets.size
+                        targets.drop(offset) +
+                            targets.take(offset)
+                    }
+                }
 
         val root =
             FrameLayout(this).apply {
@@ -96,7 +124,7 @@ class WorldExploreActivity : Activity() {
 
         eyeSpyOverlay =
             EyeSpyOverlayView(
-                targets = experience.eyeSpyTargets
+                targets = dailyTargets
             ) { target, found, total ->
                 updateEyeSpyProgress(target, found, total)
             }
@@ -181,9 +209,20 @@ class WorldExploreActivity : Activity() {
             )
         )
 
+        val savedProgress =
+            progressStore.progressFor(
+                worldDate,
+                experience.kind
+            )
+
         eyeSpyButton =
             Button(this).apply {
-                text = "EYE SPY"
+                text =
+                    if (savedProgress.completedToday) {
+                        "REPLAY"
+                    } else {
+                        "DAILY EYE SPY"
+                    }
                 textSize = 10.5f
                 letterSpacing = 0.06f
                 setTypeface(typeface, Typeface.BOLD)
@@ -210,7 +249,7 @@ class WorldExploreActivity : Activity() {
         topBar.addView(
             eyeSpyButton,
             LinearLayout.LayoutParams(
-                dp(92),
+                dp(118),
                 dp(42)
             ).apply {
                 marginStart = dp(8)
@@ -264,7 +303,11 @@ class WorldExploreActivity : Activity() {
         eyeSpyStatus =
             TextView(this).apply {
                 text =
-                    "Drag to look around • pinch to zoom • Eye Spy hides three discoveries in this world."
+                    if (savedProgress.completedToday) {
+                        "✓ Daily discovery complete • ${savedProgress.streakDays}-day world streak. Replay anytime."
+                    } else {
+                        "TODAY'S DISCOVERY  //  Drag, zoom, then find three hidden details in this live world."
+                    }
                 textSize = 12f
                 setTextColor(Color.rgb(171, 198, 218))
                 setPadding(0, dp(10), 0, 0)
@@ -342,7 +385,17 @@ class WorldExploreActivity : Activity() {
     private fun stopEyeSpy() {
         eyeSpyActive = false
         eyeSpyOverlay.stopGame()
-        eyeSpyButton.text = "EYE SPY"
+        val progress =
+            progressStore.progressFor(
+                worldDate,
+                experience.kind
+            )
+        eyeSpyButton.text =
+            if (progress.completedToday) {
+                "REPLAY"
+            } else {
+                "DAILY EYE SPY"
+            }
         eyeSpyButton.background =
             roundedBackground(
                 Color.argb(190, 8, 42, 66),
@@ -350,7 +403,11 @@ class WorldExploreActivity : Activity() {
                 Color.argb(180, 82, 211, 255)
             )
         eyeSpyStatus.text =
-            "Drag to look around • pinch to zoom • Eye Spy hides three discoveries in this world."
+            if (progress.completedToday) {
+                "✓ Daily discovery complete • ${progress.streakDays}-day world streak. Replay anytime."
+            } else {
+                "TODAY'S DISCOVERY  //  Drag, zoom, then find three hidden details in this live world."
+            }
     }
 
     private fun updateEyeSpyProgress(
@@ -359,9 +416,14 @@ class WorldExploreActivity : Activity() {
         total: Int
     ) {
         if (found >= total) {
+            val progress =
+                progressStore.markCompleted(
+                    worldDate,
+                    experience.kind
+                )
             eyeSpyStatus.text =
-                "✓ You found all $total discoveries. ${target.label.replaceFirstChar { it.uppercase() }} was the last one."
-            eyeSpyButton.text = "PLAY AGAIN"
+                "✓ Daily world complete • ${progress.streakDays}-day streak. ${target.label.replaceFirstChar { it.uppercase() }} was the last find."
+            eyeSpyButton.text = "REPLAY"
             eyeSpyActive = false
             return
         }
@@ -371,12 +433,12 @@ class WorldExploreActivity : Activity() {
 
     private fun showCurrentEyeSpyHint(found: Int) {
         val target =
-            experience.eyeSpyTargets
+            dailyTargets
                 .getOrNull(found)
                 ?: return
 
         eyeSpyStatus.text =
-            "EYE SPY  $found/${experience.eyeSpyTargets.size}  •  Find ${target.label}. ${target.hint}"
+            "TODAY'S EYE SPY  $found/${dailyTargets.size}  •  Find ${target.label}. ${target.hint}"
     }
 
     private fun roundedBackground(
