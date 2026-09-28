@@ -1497,14 +1497,15 @@ class MainActivity : Activity() {
             addView(
                 TextView(this@MainActivity).apply {
                     text = dayLabel(day.dateIso, index)
-                    textSize = 13.5f
+                    textSize = 12.5f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(Color.WHITE)
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
                 },
                 LinearLayout.LayoutParams(
-                    0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    0.9f
+                    dp(82),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
                 )
             )
 
@@ -1513,15 +1514,16 @@ class MainActivity : Activity() {
                     text =
                         "${WeatherCode.symbol(day.weatherCode)}  " +
                             WeatherCode.description(day.weatherCode)
-                    textSize = 12.5f
+                    textSize = 12f
                     setTextColor(COLOR_TEXT_SECONDARY)
                     gravity = Gravity.START
-                    maxLines = 2
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
                 },
                 LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
-                    1.85f
+                    1f
                 )
             )
 
