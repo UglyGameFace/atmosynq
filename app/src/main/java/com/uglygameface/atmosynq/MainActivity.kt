@@ -1060,14 +1060,14 @@ class MainActivity : Activity() {
     private fun renderSavedState() {
         val saved = locationStore.load()
         if (saved == null) {
-            status.text = "Not synced yet"
+            status.text = "OFFLINE"
             wallpaperButton.isEnabled = false
             wallpaperButton.alpha = 0.42f
             activeReport = null
             heroScene.setWeather(null)
         } else {
             applySelectedLocation(saved)
-            status.text = "Refreshing ${saved.heroLabel()}…"
+            status.text = "SYNCING…"
             wallpaperButton.isEnabled = true
             wallpaperButton.alpha = 1f
             refreshAtmosynqWeather(saved.latitude, saved.longitude)
@@ -1203,7 +1203,7 @@ class MainActivity : Activity() {
             return
         }
 
-        status.text = "Refreshing ${saved.heroLabel()}…"
+        status.text = "SYNCING…"
         refreshAtmosynqWeather(
             saved.latitude,
             saved.longitude
@@ -1280,7 +1280,7 @@ class MainActivity : Activity() {
     }
 
     private fun searchGlobalLocation(query: String) {
-        status.text = "Searching \"$query\"…"
+        status.text = "SEARCHING…"
         locationButton.isEnabled = false
         locationButton.alpha = 0.6f
 
@@ -1298,12 +1298,12 @@ class MainActivity : Activity() {
 
                 result.onSuccess { places ->
                     if (places.isEmpty()) {
-                        status.text = "No matching city or postal code found"
+                        status.text = "NO MATCH"
                     } else {
                         showLocationResults(query, places)
                     }
                 }.onFailure {
-                    status.text = "Location search failed • try again"
+                    status.text = "SEARCH FAILED"
                 }
             }
         }.apply {
@@ -1336,7 +1336,7 @@ class MainActivity : Activity() {
         query: String,
         place: PlaceSearchResult
     ) {
-        status.text = "Building ${place.name} scene…"
+        status.text = "BUILDING SKY…"
         locationButton.isEnabled = false
         locationButton.alpha = 0.6f
 
@@ -1398,7 +1398,7 @@ class MainActivity : Activity() {
                 wallpaperButton.isEnabled = true
                 wallpaperButton.alpha = 1f
                 applySelectedLocation(saved)
-                status.text = "Loading ${saved.heroLabel()} weather…"
+                status.text = "SYNCING…"
                 refreshAtmosynqWeather(
                     saved.latitude,
                     saved.longitude
@@ -1442,7 +1442,7 @@ class MainActivity : Activity() {
         if (coarseGranted) {
             captureCurrentLocation()
         } else {
-            status.text = "Location permission not granted • city/postal search still works"
+            status.text = "LOCATION OPTIONAL"
         }
     }
 
@@ -1471,7 +1471,7 @@ class MainActivity : Activity() {
         }
 
         callbackUsed.set(false)
-        status.text = "Getting current location…"
+        status.text = "LOCATING…"
         locationButton.isEnabled = false
         locationButton.alpha = 0.6f
 
@@ -1525,11 +1525,11 @@ class MainActivity : Activity() {
         if (location == null) {
             locationButton.isEnabled = true
             locationButton.alpha = 1f
-            status.text = "Couldn't get a location fix • try city/postal search"
+            status.text = "TRY CITY / ZIP"
             return
         }
 
-        status.text = "Resolving approximate location…"
+        status.text = "RESOLVING…"
 
         Thread {
             val reverse = reverseGeocode(location)
@@ -1611,7 +1611,7 @@ class MainActivity : Activity() {
                 wallpaperButton.isEnabled = true
                 wallpaperButton.alpha = 1f
                 applySelectedLocation(saved)
-                status.text = "Loading ${saved.heroLabel()} weather…"
+                status.text = "SYNCING…"
                 refreshAtmosynqWeather(
                     saved.latitude,
                     saved.longitude
@@ -1763,7 +1763,7 @@ class MainActivity : Activity() {
             .atZone(zone)
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
 
-        status.text = "●  Synced • $updated    ↻"
+        status.text = "●  LIVE • $updated  ↻"
     }
 
     private fun renderHourly(report: WeatherReport) {
@@ -1826,18 +1826,41 @@ class MainActivity : Activity() {
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(10), dp(12), dp(10), dp(12))
-            background = roundedBackground(
-                if (label == "Now") COLOR_HOURLY_ACTIVE else COLOR_CARD_SOFT,
-                16,
-                if (label == "Now") COLOR_SEGMENT_STROKE else COLOR_STROKE
-            )
+            setPadding(dp(10), dp(11), dp(10), dp(10))
+            background =
+                if (label == "Now") {
+                    gradientBackground(
+                        intArrayOf(
+                            Color.rgb(10, 89, 126),
+                            Color.rgb(13, 55, 88)
+                        ),
+                        18,
+                        Color.rgb(55, 214, 255)
+                    )
+                } else {
+                    gradientBackground(
+                        intArrayOf(
+                            Color.rgb(10, 38, 61),
+                            Color.rgb(7, 27, 47)
+                        ),
+                        18,
+                        Color.rgb(36, 76, 101)
+                    )
+                }
 
             addView(
                 TextView(this@MainActivity).apply {
-                    text = label
-                    textSize = 12f
-                    setTextColor(COLOR_MUTED)
+                    text = label.uppercase(Locale.getDefault())
+                    textSize = 10.5f
+                    letterSpacing = 0.06f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(
+                        if (label == "Now") {
+                            Color.rgb(90, 226, 255)
+                        } else {
+                            COLOR_MUTED
+                        }
+                    )
                     gravity = Gravity.CENTER
                 },
                 matchWrap()
@@ -1845,10 +1868,14 @@ class MainActivity : Activity() {
 
             addView(
                 TextView(this@MainActivity).apply {
-                    text = WeatherCode.symbol(hour.weatherCode, hour.isDay)
-                    textSize = 23f
+                    text =
+                        WeatherCode.symbol(
+                            hour.weatherCode,
+                            hour.isDay
+                        )
+                    textSize = 24f
                     gravity = Gravity.CENTER
-                    setPadding(0, dp(4), 0, dp(1))
+                    setPadding(0, dp(5), 0, dp(1))
                 },
                 matchWrap()
             )
@@ -1856,7 +1883,7 @@ class MainActivity : Activity() {
             addView(
                 TextView(this@MainActivity).apply {
                     text = formatTemperature(hour.temperatureC)
-                    textSize = 18f
+                    textSize = 19f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(Color.WHITE)
                     gravity = Gravity.CENTER
@@ -1866,18 +1893,64 @@ class MainActivity : Activity() {
 
             addView(
                 TextView(this@MainActivity).apply {
-                    text = "${hour.precipitationProbabilityPct}%"
-                    textSize = 11.5f
-                    setTextColor(COLOR_ACCENT)
+                    text = "RAIN ${hour.precipitationProbabilityPct}%"
+                    textSize = 9.5f
+                    letterSpacing = 0.04f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.rgb(95, 213, 255))
                     gravity = Gravity.CENTER
-                    setPadding(0, dp(3), 0, 0)
+                    setPadding(0, dp(4), 0, dp(5))
                 },
                 matchWrap()
+            )
+
+            val track =
+                FrameLayout(this@MainActivity).apply {
+                    background =
+                        roundedBackground(
+                            Color.argb(160, 1, 17, 30),
+                            2
+                        )
+
+                    val fillWidth =
+                        (
+                            6 +
+                                48 *
+                                hour.precipitationProbabilityPct
+                                    .coerceIn(0, 100) /
+                                100f
+                            ).roundToInt()
+
+                    addView(
+                        View(this@MainActivity).apply {
+                            background =
+                                gradientBackground(
+                                    intArrayOf(
+                                        Color.rgb(48, 211, 255),
+                                        Color.rgb(129, 83, 255)
+                                    ),
+                                    2
+                                )
+                        },
+                        FrameLayout.LayoutParams(
+                            dp(fillWidth),
+                            dp(3),
+                            Gravity.START
+                        )
+                    )
+                }
+
+            addView(
+                track,
+                LinearLayout.LayoutParams(
+                    dp(54),
+                    dp(3)
+                )
             )
         }.also { card ->
             card.layoutParams =
                 LinearLayout.LayoutParams(
-                    dp(82),
+                    dp(86),
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 ).apply {
                     marginEnd = dp(8)
@@ -1893,21 +1966,20 @@ class MainActivity : Activity() {
         }
 
         report.daily.take(7).forEachIndexed { index, day ->
-            dailyContainer.addView(dayRow(day, index))
-            if (index < minOf(6, report.daily.lastIndex)) {
-                dailyContainer.addView(
-                    View(this).apply {
-                        setBackgroundColor(Color.argb(70, 118, 164, 194))
-                    },
-                    LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        dp(1)
-                    ).apply {
-                        leftMargin = dp(8)
-                        rightMargin = dp(8)
-                    }
-                )
-            }
+            dailyContainer.addView(
+                dayRow(day, index),
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin =
+                        if (index < minOf(6, report.daily.lastIndex)) {
+                            dp(6)
+                        } else {
+                            0
+                        }
+                }
+            )
         }
 
         dailySection.visibility = View.VISIBLE
@@ -1918,12 +1990,25 @@ class MainActivity : Activity() {
         index: Int
     ): LinearLayout =
         LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            setBackgroundColor(Color.TRANSPARENT)
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(10), dp(12), dp(9))
+            background =
+                gradientBackground(
+                    intArrayOf(
+                        Color.argb(210, 10, 38, 61),
+                        Color.argb(210, 7, 26, 46)
+                    ),
+                    17,
+                    Color.argb(115, 55, 102, 132)
+                )
 
-            addView(
+            val row =
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+
+            row.addView(
                 TextView(this@MainActivity).apply {
                     text = dayLabel(day.dateIso, index)
                     textSize = 12.5f
@@ -1933,17 +2018,27 @@ class MainActivity : Activity() {
                     ellipsize = TextUtils.TruncateAt.END
                 },
                 LinearLayout.LayoutParams(
-                    dp(82),
+                    dp(76),
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
             )
 
-            addView(
+            row.addView(
                 TextView(this@MainActivity).apply {
-                    text =
-                        "${WeatherCode.symbol(day.weatherCode)}  " +
-                            WeatherCode.description(day.weatherCode)
-                    textSize = 12f
+                    text = WeatherCode.symbol(day.weatherCode)
+                    textSize = 18f
+                    gravity = Gravity.CENTER
+                },
+                LinearLayout.LayoutParams(
+                    dp(36),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+
+            row.addView(
+                TextView(this@MainActivity).apply {
+                    text = WeatherCode.description(day.weatherCode)
+                    textSize = 11.5f
                     setTextColor(COLOR_TEXT_SECONDARY)
                     gravity = Gravity.START
                     maxLines = 1
@@ -1956,32 +2051,95 @@ class MainActivity : Activity() {
                 )
             )
 
-            addView(
-                TextView(this@MainActivity).apply {
-                    text = "${day.precipitationProbabilityPct}%"
-                    textSize = 12f
-                    setTextColor(COLOR_ACCENT)
-                    gravity = Gravity.CENTER
-                },
-                LinearLayout.LayoutParams(
-                    dp(44),
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-            )
-
-            addView(
+            row.addView(
                 TextView(this@MainActivity).apply {
                     text =
-                        "${formatTemperature(day.highC)} / ${formatTemperature(day.lowC)}"
-                    textSize = 13f
+                        "${formatTemperature(day.highC)}  ${formatTemperature(day.lowC)}"
+                    textSize = 12.5f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(Color.WHITE)
                     gravity = Gravity.END
                 },
                 LinearLayout.LayoutParams(
-                    dp(76),
+                    dp(78),
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
+            )
+
+            row.addView(
+                TextView(this@MainActivity).apply {
+                    text = "💧${day.precipitationProbabilityPct}%"
+                    textSize = 10.5f
+                    setTypeface(typeface, Typeface.BOLD)
+                    setTextColor(Color.rgb(102, 218, 255))
+                    gravity = Gravity.CENTER
+                    setPadding(dp(5), dp(3), dp(5), dp(3))
+                    background =
+                        roundedBackground(
+                            Color.argb(155, 8, 58, 88),
+                            11,
+                            Color.argb(130, 57, 174, 229)
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    dp(58),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+
+            addView(
+                row,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+
+            val probabilityTrack =
+                FrameLayout(this@MainActivity).apply {
+                    background =
+                        roundedBackground(
+                            Color.argb(145, 3, 17, 31),
+                            2
+                        )
+
+                    val widthDp =
+                        (
+                            8 +
+                                92 *
+                                day.precipitationProbabilityPct
+                                    .coerceIn(0, 100) /
+                                100f
+                            ).roundToInt()
+
+                    addView(
+                        View(this@MainActivity).apply {
+                            background =
+                                gradientBackground(
+                                    intArrayOf(
+                                        Color.rgb(41, 207, 255),
+                                        Color.rgb(104, 117, 255),
+                                        Color.rgb(163, 79, 255)
+                                    ),
+                                    2
+                                )
+                        },
+                        FrameLayout.LayoutParams(
+                            dp(widthDp),
+                            dp(3),
+                            Gravity.START
+                        )
+                    )
+                }
+
+            addView(
+                probabilityTrack,
+                LinearLayout.LayoutParams(
+                    dp(100),
+                    dp(3)
+                ).apply {
+                    topMargin = dp(7)
+                }
             )
         }
 
@@ -2009,7 +2167,8 @@ class MainActivity : Activity() {
     ): TextView =
         TextView(this).apply {
             text = label
-            textSize = 13.5f
+            textSize = 11.5f
+            letterSpacing = 0.045f
             gravity = Gravity.CENTER
             setTypeface(typeface, Typeface.BOLD)
             setOnClickListener { onClick() }
@@ -2019,12 +2178,31 @@ class MainActivity : Activity() {
         view: TextView,
         active: Boolean
     ) {
-        view.setTextColor(if (active) Color.WHITE else COLOR_MUTED)
-        view.background = roundedBackground(
-            if (active) COLOR_SEGMENT_ACTIVE else Color.TRANSPARENT,
-            18,
-            if (active) COLOR_SEGMENT_STROKE else Color.TRANSPARENT
+        view.setTextColor(
+            if (active) {
+                Color.WHITE
+            } else {
+                Color.rgb(125, 158, 183)
+            }
         )
+
+        view.background =
+            if (active) {
+                gradientBackground(
+                    intArrayOf(
+                        Color.rgb(16, 155, 210),
+                        Color.rgb(25, 104, 181)
+                    ),
+                    17,
+                    Color.rgb(76, 216, 255)
+                )
+            } else {
+                roundedBackground(
+                    Color.TRANSPARENT,
+                    17,
+                    Color.TRANSPARENT
+                )
+            }
     }
 
     private fun metricValue(initial: String): TextView =
@@ -2093,33 +2271,52 @@ class MainActivity : Activity() {
     ): Button =
         Button(this).apply {
             text = label
-            textSize = if (primary) 16f else 14f
+            textSize = if (primary) 15f else 11.5f
+            letterSpacing = if (primary) 0.035f else 0.065f
             isAllCaps = false
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
             background =
                 if (primary) {
                     gradientBackground(
                         intArrayOf(
-                            Color.rgb(25, 199, 255),
-                            Color.rgb(20, 119, 245),
-                            Color.rgb(141, 82, 255)
+                            Color.rgb(18, 194, 247),
+                            Color.rgb(24, 121, 243),
+                            Color.rgb(121, 75, 250)
                         ),
-                        24,
-                        Color.rgb(109, 222, 255)
+                        21,
+                        Color.rgb(108, 225, 255)
                     )
                 } else {
-                    roundedBackground(
-                        COLOR_BUTTON_BG,
-                        18,
-                        COLOR_STROKE
+                    gradientBackground(
+                        intArrayOf(
+                            Color.rgb(11, 41, 64),
+                            Color.rgb(7, 29, 49)
+                        ),
+                        17,
+                        Color.rgb(42, 84, 111)
                     )
                 }
             stateListAnimator = null
             minHeight = 0
             minWidth = 0
-            setPadding(dp(16), 0, dp(16), 0)
-            setOnClickListener { onClick() }
+            setPadding(dp(12), 0, dp(12), 0)
+            setOnClickListener {
+                animate()
+                    .scaleX(0.97f)
+                    .scaleY(0.97f)
+                    .setDuration(70L)
+                    .withEndAction {
+                        animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(120L)
+                            .start()
+                        onClick()
+                    }
+                    .start()
+            }
         }
 
     private fun formatTemperature(celsius: Double): String {
@@ -2192,15 +2389,65 @@ class MainActivity : Activity() {
         LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(2), dp(8), dp(2), dp(7))
+            setPadding(dp(2), dp(4), dp(2), dp(9))
 
             addView(
-                TextView(this@MainActivity).apply {
-                    text = title
-                    textSize = 17f
-                    setTypeface(typeface, Typeface.BOLD)
-                    setTextColor(Color.WHITE)
+                View(this@MainActivity).apply {
+                    background =
+                        GradientDrawable(
+                            GradientDrawable.Orientation.TOP_BOTTOM,
+                            intArrayOf(
+                                Color.rgb(42, 217, 255),
+                                Color.rgb(142, 78, 255)
+                            )
+                        ).apply {
+                            cornerRadius = dp(2).toFloat()
+                        }
                 },
+                LinearLayout.LayoutParams(
+                    dp(3),
+                    dp(30)
+                ).apply {
+                    marginEnd = dp(9)
+                }
+            )
+
+            val titleStack =
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = "FORECAST STREAM"
+                            textSize = 8.5f
+                            letterSpacing = 0.12f
+                            setTypeface(typeface, Typeface.BOLD)
+                            setTextColor(Color.rgb(78, 194, 240))
+                            includeFontPadding = false
+                        },
+                        LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                    )
+
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = title
+                            textSize = 17f
+                            setTypeface(typeface, Typeface.BOLD)
+                            setTextColor(Color.WHITE)
+                            includeFontPadding = false
+                        },
+                        LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                    )
+                }
+
+            addView(
+                titleStack,
                 LinearLayout.LayoutParams(
                     0,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -2211,9 +2458,10 @@ class MainActivity : Activity() {
             addView(
                 TextView(this@MainActivity).apply {
                     text = action
-                    textSize = 11.5f
+                    textSize = 10.5f
+                    letterSpacing = 0.03f
                     setTypeface(typeface, Typeface.BOLD)
-                    setTextColor(COLOR_ACCENT)
+                    setTextColor(Color.rgb(88, 210, 255))
                     gravity = Gravity.END
                 },
                 LinearLayout.LayoutParams(
