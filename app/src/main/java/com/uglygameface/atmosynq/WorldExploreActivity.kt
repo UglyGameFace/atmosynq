@@ -21,7 +21,9 @@ import com.uglygameface.atmosynq.weather.WeatherSnapshot
 import com.uglygameface.atmosynq.worlds.EyeSpyTarget
 import com.uglygameface.atmosynq.worlds.WorldExperience
 import com.uglygameface.atmosynq.worlds.WorldExperienceResolver
+import com.uglygameface.atmosynq.worlds.WorldHotspotAction
 import com.uglygameface.atmosynq.worlds.WorldProgressStore
+import com.uglygameface.atmosynq.worlds.WorldSceneLayer
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.min
@@ -29,10 +31,14 @@ import kotlin.math.roundToInt
 
 class WorldExploreActivity : Activity() {
     private lateinit var sceneView: FilamentWeatherHeroView
+    private lateinit var sceneFrame: FrameLayout
+    private lateinit var worldTitle: TextView
+    private lateinit var worldSubtitle: TextView
     private lateinit var eyeSpyButton: TextView
     private lateinit var interactionStatus: TextView
 
     private lateinit var experience: WorldExperience
+    private var activeScene: WorldSceneLayer? = null
     private lateinit var dailyTargets: List<EyeSpyTarget>
     private lateinit var worldDate: LocalDate
     private val progressStore by lazy { WorldProgressStore(this) }
@@ -68,7 +74,11 @@ class WorldExploreActivity : Activity() {
                 ?: ZoneId.systemDefault()
 
         worldDate = LocalDate.now(worldZone)
-        dailyTargets = rotateDailyTargets(experience.eyeSpyTargets)
+        activeScene = experience.primaryScene
+        dailyTargets =
+            rotateDailyTargets(
+                experience.primaryScene?.hotspots.orEmpty()
+            )
 
         val root =
             FrameLayout(this).apply {
@@ -85,18 +95,29 @@ class WorldExploreActivity : Activity() {
 
         sceneView =
             FilamentWeatherHeroView(this).apply {
+                setCinematicAsset(activeScene?.assetPath)
                 setSceneProfile(profile)
                 setWeather(weather)
                 setAnimated(true)
                 setExplorationMode(true)
                 contentDescription =
-                    "Interactive Atmosynq world. Drag to look around, pinch to zoom and tap visible landmarks."
-                setOnSceneTapListener { u, v ->
-                    handleSceneTap(u, v)
-                }
+                    if (activeScene != null) {
+                        "Interactive Atmosynq world. Drag to look around, pinch to zoom and tap visible landmarks."
+                    } else {
+                        "Live Atmosynq 3D weather scene."
+                    }
+                setOnSceneTapListener(
+                    if (activeScene != null) {
+                        { u, v ->
+                            handleSceneTap(u, v)
+                        }
+                    } else {
+                        null
+                    }
+                )
             }
 
-        val sceneFrame =
+        sceneFrame =
             FrameLayout(this).apply {
                 clipToOutline = true
                 elevation = dp(10).toFloat()
@@ -264,16 +285,18 @@ class WorldExploreActivity : Activity() {
                         }
                     )
 
-                    addView(
+                    worldTitle =
                         TextView(this@WorldExploreActivity).apply {
-                            text = experience.title
+                            text =
+                                activeScene?.title
+                                    ?: experience.title
                             textSize = 20f
                             setTypeface(typeface, Typeface.BOLD)
                             setTextColor(Color.WHITE)
                             maxLines = 1
                             ellipsize = TextUtils.TruncateAt.END
                         }
-                    )
+                    addView(worldTitle)
                 }
 
             addView(
@@ -294,10 +317,13 @@ class WorldExploreActivity : Activity() {
             eyeSpyButton =
                 TextView(this@WorldExploreActivity).apply {
                     text =
-                        if (savedProgress.completedToday) {
-                            "REPLAY"
-                        } else {
-                            "DAILY EYE SPY"
+                        when {
+                            activeScene == null ->
+                                "LIVE 3D"
+                            savedProgress.completedToday ->
+                                "REPLAY"
+                            else ->
+                                "DAILY EYE SPY"
                         }
                     textSize = 10f
                     letterSpacing = 0.055f
@@ -310,7 +336,12 @@ class WorldExploreActivity : Activity() {
                             20,
                             Color.argb(200, 82, 211, 255)
                         )
+                    isEnabled = activeScene != null
+                    alpha = if (activeScene != null) 1f else 0.52f
                     setOnClickListener {
+                        if (activeScene == null) {
+                            return@setOnClickListener
+                        }
                         if (eyeSpyActive) {
                             stopEyeSpy()
                         } else {
@@ -350,14 +381,16 @@ class WorldExploreActivity : Activity() {
                     Color.argb(185, 62, 151, 201)
                 )
 
-            addView(
+            worldSubtitle =
                 TextView(this@WorldExploreActivity).apply {
-                    text = experience.subtitle
+                    text =
+                        activeScene?.subtitle
+                            ?: experience.subtitle
                     textSize = 16f
                     setTypeface(typeface, Typeface.BOLD)
                     setTextColor(Color.rgb(230, 242, 249))
                 }
-            )
+            addView(worldSubtitle)
 
             addView(
                 TextView(this@WorldExploreActivity).apply {
@@ -376,8 +409,10 @@ class WorldExploreActivity : Activity() {
                     text =
                         if (savedProgress.completedToday) {
                             "✓ Daily discovery complete • ${savedProgress.streakDays}-day world streak. Tap landmarks to explore or replay Eye Spy."
-                        } else {
+                        } else if (activeScene != null) {
                             "Tap a visible landmark to inspect it. Daily Eye Spy uses these same real scene regions."
+                        } else {
+                            "LIVE 3D WORLD  //  This scene is rendered live, but semantic landmark gameplay stays off until its dedicated World asset ships."
                         }
                     textSize = 12.5f
                     setTextColor(Color.rgb(178, 207, 225))
