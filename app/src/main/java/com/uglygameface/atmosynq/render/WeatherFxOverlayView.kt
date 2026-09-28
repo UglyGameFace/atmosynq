@@ -91,10 +91,10 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             w.toFloat(),
             h * 0.58f,
             intArrayOf(
-                Color.argb(0, 34, 236, 255),
-                Color.argb(150, 39, 208, 255),
-                Color.argb(130, 157, 79, 255),
-                Color.argb(0, 255, 71, 214)
+                Color.argb(0, 88, 132, 165),
+                Color.argb(46, 80, 120, 154),
+                Color.argb(32, 109, 137, 161),
+                Color.argb(0, 117, 143, 166)
             ),
             floatArrayOf(0f, 0.30f, 0.68f, 1f),
             Shader.TileMode.CLAMP
@@ -131,6 +131,7 @@ class WeatherFxOverlayView(context: Context) : View(context) {
             .coerceIn(0.0, 1.8)
             .toFloat()
 
+        drawCloudDeck(canvas, seconds, isDay, cloud)
         drawAtmosphere(canvas, seconds, isDay, cloud)
         drawForegroundDepth(canvas, seconds, isDay, cloud, wind)
         drawWind(canvas, seconds, wind, cloud)
@@ -145,6 +146,93 @@ class WeatherFxOverlayView(context: Context) : View(context) {
         }
     }
 
+    private fun drawCloudDeck(
+        canvas: Canvas,
+        seconds: Float,
+        isDay: Boolean,
+        cloud: Float
+    ) {
+        if (snapshot == null || cloud < 0.18f) return
+
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val deckAlpha =
+            (
+                18f +
+                    cloud * if (isDay) 62f else 50f
+                ).toInt().coerceIn(0, 82)
+
+        val baseR = if (isDay) 118 else 54
+        val baseG = if (isDay) 135 else 69
+        val baseB = if (isDay) 151 else 88
+
+        repeat(7) { index ->
+            val phase =
+                if (animated) {
+                    seconds * (0.006f + index * 0.0015f)
+                } else {
+                    0f
+                }
+            val seed = hash(8_800 + index * 179)
+            val x0 =
+                (((seed and 0x3ff) / 1023f) * w * 1.25f) -
+                    w * 0.12f
+            val drift =
+                sin(phase + index * 0.83f) *
+                    w * (0.018f + index * 0.002f)
+            val cx =
+                x0 + drift + parallaxX * w * (0.006f + index * 0.001f)
+            val cy =
+                h * (0.18f + (index % 4) * 0.055f) +
+                    parallaxY * h * 0.012f
+            val radius =
+                w * (0.18f + (index % 3) * 0.045f)
+
+            paint.style = Paint.Style.FILL
+            paint.shader =
+                RadialGradient(
+                    cx,
+                    cy,
+                    radius,
+                    intArrayOf(
+                        Color.argb(
+                            (deckAlpha * 0.92f).toInt(),
+                            baseR,
+                            baseG,
+                            baseB
+                        ),
+                        Color.argb(
+                            (deckAlpha * 0.48f).toInt(),
+                            baseR - 16,
+                            baseG - 14,
+                            baseB - 10
+                        ),
+                        Color.TRANSPARENT
+                    ),
+                    floatArrayOf(0f, 0.56f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+
+            canvas.save()
+            canvas.scale(
+                1.0f,
+                0.42f,
+                cx,
+                cy
+            )
+            canvas.drawCircle(
+                cx,
+                cy,
+                radius,
+                paint
+            )
+            canvas.restore()
+        }
+
+        paint.shader = null
+        paint.alpha = 255
+    }
+
     private fun drawAtmosphere(
         canvas: Canvas,
         seconds: Float,
@@ -153,9 +241,9 @@ class WeatherFxOverlayView(context: Context) : View(context) {
     ) {
         val alphaBase =
             if (isDay) {
-                (1.5f + cloud * 4.5f)
+                (1f + cloud * 2f)
             } else {
-                (14f + cloud * 20f)
+                (3f + cloud * 6f)
             }
 
         paint.style = Paint.Style.FILL
