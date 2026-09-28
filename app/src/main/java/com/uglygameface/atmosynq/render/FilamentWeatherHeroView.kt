@@ -31,6 +31,7 @@ import kotlin.math.sin
 class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private val fallback = WeatherHeroView(context)
     private val filamentSurface = TextureView(context)
+    private val cinematicBackdrop = CinematicBackdropView(context)
     private val fxOverlay = WeatherFxOverlayView(context)
 
     private var viewer: ModelViewer? = null
@@ -46,6 +47,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     private var framePosted = false
     private var renderOnce = true
     private var filamentReady = false
+    private var cinematicActive = false
     private var startedAtNanos = 0L
 
     private var cameraYaw = 0f
@@ -91,22 +93,29 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
     private val frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
         framePosted = false
-        val v = viewer ?: return@FrameCallback
 
         if (startedAtNanos == 0L) startedAtNanos = frameTimeNanos
         val seconds = (frameTimeNanos - startedAtNanos) / 1_000_000_000.0f
 
-        if (animated) {
-            animateScene(v, seconds)
-        }
-        applyCameraPose(v, seconds)
-        applyWeatherLighting(v)
+        cinematicBackdrop.setElapsedSeconds(seconds)
 
-        val rendered = runCatching { v.render(frameTimeNanos) }.getOrDefault(false)
-        if (rendered && !filamentReady) {
-            filamentReady = true
-            filamentSurface.alpha = 1f
-            fallback.visibility = View.INVISIBLE
+        val v = viewer
+        if (v != null && !cinematicActive) {
+            if (animated) {
+                animateScene(v, seconds)
+            }
+            applyCameraPose(v, seconds)
+            applyWeatherLighting(v)
+
+            val rendered =
+                runCatching {
+                    v.render(frameTimeNanos)
+                }.getOrDefault(false)
+
+            if (rendered && !filamentReady) {
+                filamentReady = true
+                updateSceneMode()
+            }
         }
 
         renderOnce = false
@@ -137,6 +146,17 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
             )
         )
 
+        cinematicBackdrop.alpha = 0f
+        cinematicBackdrop.visibility = View.INVISIBLE
+        cinematicBackdrop.isClickable = false
+        addView(
+            cinematicBackdrop,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT
+            )
+        )
+
         fxOverlay.isClickable = false
         addView(
             fxOverlay,
@@ -149,6 +169,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         isClickable = true
         isFocusable = true
         fallback.setAnimated(animated)
+        cinematicBackdrop.setAnimated(animated)
         fxOverlay.setAnimated(animated)
     }
 
@@ -156,23 +177,27 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         sceneProfile = profile
         locationResolved = true
         fallback.setSceneProfile(profile)
+        cinematicBackdrop.setSceneProfile(profile)
         fxOverlay.setSceneProfile(profile)
         viewer?.let {
             applySceneProfile(it)
             applyWeatherSceneState(it)
         }
+        updateSceneMode()
         requestRender()
     }
 
     fun setWeather(snapshot: WeatherSnapshot?) {
         this.snapshot = snapshot
         fallback.setWeather(snapshot)
+        cinematicBackdrop.setWeather(snapshot)
         fxOverlay.setWeather(snapshot)
         viewer?.let {
             applyWeatherSceneState(it)
             applyWeatherLighting(it)
             applyCameraPose(it, 0f)
         }
+        updateSceneMode()
         requestRender()
     }
 
@@ -181,6 +206,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         // Only spend Canvas frames while Filament is not yet carrying the scene.
         fallback.setAnimated(animated && !filamentReady)
+        cinematicBackdrop.setAnimated(animated)
         fxOverlay.setAnimated(animated)
 
         if (animated) {
@@ -343,6 +369,7 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         viewer = created
         if (created != null) {
             filamentSurface.visibility = View.VISIBLE
+            updateSceneMode()
             renderOnce = true
         }
     }
@@ -534,10 +561,39 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
     }
 
     private fun updateInteractionParallax() {
-        fxOverlay.setParallax(
-            cameraYaw / MAX_CAMERA_YAW,
-            cameraPitch / MAX_CAMERA_PITCH
-        )
+        val x = cameraYaw / MAX_CAMERA_YAW
+        val y = cameraPitch / MAX_CAMERA_PITCH
+
+        cinematicBackdrop.setParallax(x, y)
+        fxOverlay.setParallax(x, y)
+    }
+
+    private fun updateSceneMode() {
+        val shouldUseCinematic =
+            locationResolved &&
+                snapshot != null &&
+                cinematicBackdrop.canRender(sceneProfile)
+
+        cinematicActive = shouldUseCinematic
+
+        if (shouldUseCinematic) {
+            cinematicBackdrop.visibility = View.VISIBLE
+            cinematicBackdrop.alpha = 1f
+            filamentSurface.alpha = 0f
+            fallback.visibility = View.INVISIBLE
+        } else {
+            cinematicBackdrop.alpha = 0f
+            cinematicBackdrop.visibility = View.INVISIBLE
+
+            if (filamentReady) {
+                filamentSurface.alpha = 1f
+                filamentSurface.visibility = View.VISIBLE
+                fallback.visibility = View.INVISIBLE
+            } else {
+                filamentSurface.alpha = 0f
+                fallback.visibility = View.VISIBLE
+            }
+        }
     }
 
     private fun captureTrackedTransforms(v: ModelViewer) {
