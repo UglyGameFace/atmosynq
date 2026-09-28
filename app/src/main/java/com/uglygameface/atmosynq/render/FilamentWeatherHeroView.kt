@@ -587,19 +587,21 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
 
         if (shouldUseCinematic) {
             loadingSurface.visibility = View.INVISIBLE
+            filamentSurface.alpha = 0f
+            filamentSurface.visibility = View.INVISIBLE
             cinematicBackdrop.visibility = View.VISIBLE
             cinematicBackdrop.alpha = 1f
-            filamentSurface.alpha = 0f
         } else {
             cinematicBackdrop.alpha = 0f
             cinematicBackdrop.visibility = View.INVISIBLE
 
             if (filamentReady) {
                 loadingSurface.visibility = View.INVISIBLE
-                filamentSurface.alpha = 1f
                 filamentSurface.visibility = View.VISIBLE
+                filamentSurface.alpha = 1f
             } else {
                 filamentSurface.alpha = 0f
+                filamentSurface.visibility = View.INVISIBLE
                 loadingSurface.visibility = View.VISIBLE
             }
         }
