@@ -435,9 +435,16 @@ class WorldExploreActivity : Activity() {
             (root.width - horizontalMargin * 2)
                 .coerceAtLeast(dp(220))
 
+        val sceneWidth =
+            activeScene?.sourceWidth?.toFloat()
+                ?: 16f
+        val sceneHeight =
+            activeScene?.sourceHeight?.toFloat()
+                ?: 10f
+
         val desiredHeight =
-            (maxWidth * SOURCE_ASPECT_HEIGHT /
-                SOURCE_ASPECT_WIDTH).roundToInt()
+            (maxWidth * sceneHeight /
+                sceneWidth).roundToInt()
 
         val top =
             topBar.bottom + dp(10)
@@ -457,8 +464,8 @@ class WorldExploreActivity : Activity() {
                 maxWidth,
                 (
                     height *
-                        SOURCE_ASPECT_WIDTH /
-                        SOURCE_ASPECT_HEIGHT
+                        sceneWidth /
+                        sceneHeight
                     ).roundToInt()
             )
 
@@ -491,8 +498,9 @@ class WorldExploreActivity : Activity() {
         v: Float
     ) {
         val tappedTarget =
-            experience.eyeSpyTargets
-                .firstOrNull { target ->
+            activeScene
+                ?.hotspots
+                ?.firstOrNull { target ->
                     target.region.contains(u, v)
                 }
 
@@ -508,6 +516,15 @@ class WorldExploreActivity : Activity() {
             sceneView.performHapticFeedback(
                 HapticFeedbackConstants.KEYBOARD_TAP
             )
+            return
+        }
+
+        if (
+            tappedTarget.action == WorldHotspotAction.ENTER &&
+            activeScene?.id == experience.primaryScene?.id &&
+            experience.interiorScene != null
+        ) {
+            enterInteriorScene()
             return
         }
 
@@ -557,12 +574,115 @@ class WorldExploreActivity : Activity() {
         )
     }
 
+    private fun enterInteriorScene() {
+        val interior =
+            experience.interiorScene
+                ?: return
+
+        if (eyeSpyActive) {
+            stopEyeSpy()
+        }
+
+        activeScene = interior
+        sceneView.setCinematicAsset(interior.assetPath)
+        sceneView.resetSceneFocus()
+        worldTitle.text = interior.title
+        worldSubtitle.text = interior.subtitle
+
+        eyeSpyButton.text = "OUTSIDE"
+        eyeSpyButton.isEnabled = true
+        eyeSpyButton.alpha = 1f
+        eyeSpyButton.setOnClickListener {
+            returnToPrimaryScene()
+        }
+
+        interactionStatus.text =
+            "INSIDE THE CABIN  //  Tap the fireplace, window or hearth. Press back or OUTSIDE to return."
+
+        relayoutSceneViewport()
+    }
+
+    private fun returnToPrimaryScene() {
+        val primary =
+            experience.primaryScene
+                ?: return
+
+        activeScene = primary
+        sceneView.setCinematicAsset(primary.assetPath)
+        sceneView.resetSceneFocus()
+        worldTitle.text = primary.title
+        worldSubtitle.text = primary.subtitle
+        dailyTargets =
+            rotateDailyTargets(primary.hotspots)
+
+        configurePrimarySceneAction()
+        interactionStatus.text =
+            "Back outside. Tap a visible landmark to inspect it or start Daily Eye Spy."
+
+        relayoutSceneViewport()
+    }
+
+    private fun configurePrimarySceneAction() {
+        val progress =
+            progressStore.progressFor(
+                worldDate,
+                experience.kind
+            )
+
+        eyeSpyButton.text =
+            if (progress.completedToday) {
+                "REPLAY"
+            } else {
+                "DAILY EYE SPY"
+            }
+        eyeSpyButton.isEnabled = true
+        eyeSpyButton.alpha = 1f
+        eyeSpyButton.setOnClickListener {
+            if (eyeSpyActive) {
+                stopEyeSpy()
+            } else {
+                startEyeSpy()
+            }
+        }
+    }
+
+    private fun relayoutSceneViewport() {
+        val root =
+            sceneFrame.parent as? FrameLayout
+                ?: return
+
+        val topBar =
+            root.getChildAt(1)
+                ?: return
+        val bottomPanel =
+            root.getChildAt(2)
+                ?: return
+
+        root.post {
+            layoutSourceAspectViewport(
+                root = root,
+                topBar = topBar,
+                bottomPanel = bottomPanel,
+                sceneFrame = sceneFrame
+            )
+        }
+    }
+
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         if (eyeSpyActive) {
             stopEyeSpy()
             return
         }
+
+        if (
+            experience.interiorScene != null &&
+            activeScene?.id == experience.interiorScene?.id
+        ) {
+            returnToPrimaryScene()
+            return
+        }
+
         super.onBackPressed()
     }
 
@@ -688,8 +808,5 @@ class WorldExploreActivity : Activity() {
             "com.uglygameface.atmosynq.extra.WEATHER_JSON"
         const val EXTRA_START_EYE_SPY =
             "com.uglygameface.atmosynq.extra.START_EYE_SPY"
-
-        private const val SOURCE_ASPECT_WIDTH = 4f
-        private const val SOURCE_ASPECT_HEIGHT = 3f
     }
 }
