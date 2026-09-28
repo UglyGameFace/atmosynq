@@ -34,6 +34,18 @@ jobs:
           test -x "$SDKMANAGER"
           "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tools/scene-requirements.txt
+
+      - name: Build production Filament scene
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check -r tools/scene-requirements.txt
+          python tools/build_atmos_scene.py --out app/src/main/assets/filament/atmos_scene.glb
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'

@@ -11,8 +11,8 @@ android {
         applicationId = "com.uglygameface.atmosynq"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.4.0"
+        versionCode = 18
+        versionName = "0.8.2"
     }
 
     compileOptions {
@@ -29,9 +29,9 @@ android {
 
 
 dependencies {
-    implementation("com.google.android.filament:filament-android:1.77.0")
-    implementation("com.google.android.filament:gltfio-android:1.77.0")
-    implementation("com.google.android.filament:filament-utils-android:1.77.0")
+    implementation("com.google.android.filament:filament-android:1.77.1")
+    implementation("com.google.android.filament:gltfio-android:1.77.1")
+    implementation("com.google.android.filament:filament-utils-android:1.77.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
