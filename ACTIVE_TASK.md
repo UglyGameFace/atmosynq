@@ -33,9 +33,35 @@ Samsung screenshots proved the production scene generator was actually being use
 The result was an improvement, not a finished product.
 
 ## Current target
-- versionCode: 12
-- versionName: 0.5.1
+- versionCode: 13
+- versionName: 0.5.2
 - Filament: 1.77.1
+
+## v0.5.2 Samsung findings and root-cause fixes
+
+The exact green v0.5.1 Samsung screenshots still failed the visual gate. New device evidence showed:
+- bright lamp heads still read as floating lights
+- red / green / white glow was still overpowering the actual weather scene
+- the top header used a square icon plus plain Android text instead of the approved Atmosynq horizontal wordmark
+- the house layer still dominated too much of the hero
+- the unsynced state still showed road / water geometry despite having no selected place
+- cloud geometry still read as synthetic blobs instead of the mockup's broad storm deck
+- the overall color treatment still looked like an effects demo rather than the approved cinematic weather dashboard
+
+These are treated as failed device validation, not subjective polish.
+
+### v0.5.2 direct corrections
+- extracted the approved horizontal Atmosynq logo from the existing brand system and added it as a real app drawable
+- removed the duplicate plain-text Atmosynq header treatment
+- hid the entire street-pole / lamp-head layer in runtime scene composition
+- removed emissive energy from generated window / lamp material
+- disabled bloom completely until scene lighting is trustworthy
+- replaced cyan / purple / green aurora wash with neutral blue-gray atmosphere
+- added a soft radial cloud-deck overlay so overcast reads as a broad sky mass rather than floating 3D marshmallows
+- pulled the camera back and increased focal length so the environment reads as a landscape instead of toy houses in the user's face
+- reduced town / local house scale substantially
+- no-location state now hides ground, wet road, water, road marks, terrain, settlement, vegetation, streetlights and clouds
+- unresolved state therefore shows only a subdued atmospheric sky until the user actually chooses a place
 
 ## v0.5.1 root-cause fixes
 
@@ -131,7 +157,7 @@ The generator must still emit a GLB larger than 500 KB and contain required prod
 - old saved-location compatibility
 - Filament fallback
 
-## Exact-head CI status
+## Previous exact-head CI status
 Exact v0.5.1 head: `5451de9f91d30633b143984b3257f1f9198fec53`
 
 Android CI run #121 passed:
@@ -156,6 +182,9 @@ The final v0.5.1 head passed:
 - debug APK assembly
 - artifact upload
 
+## v0.5.2 exact-head CI gate
+The final v0.5.2 head must pass production scene generation, unit/regression tests, Kotlin compilation, resource linking, debug APK assembly and artifact upload before device testing.
+
 ## Samsung device gate after CI
 1. No vertical green / transparency split in the unsynced state.
 2. Unsynced hero is subdued and does not show fake location-specific scenery.
@@ -179,4 +208,4 @@ The final v0.5.1 head passed:
 PR #12 remains draft. Do not merge and do not call the visual task complete until the exact green v0.5.1 APK passes the Samsung gate.
 
 ## Next step
-Install the exact green v0.5.1 APK from CI run #121 on the Samsung. Compare it against both the approved mockup and the v0.5.0 device screenshots, with special attention to the radioactive bloom, cloud geometry, unsynced color split, house repetition, hero readability and compactness.
+Wait for exact-head v0.5.2 CI. If green, install that exact APK on the Samsung and compare it directly against the approved storm-dashboard mockup, specifically checking the horizontal brand, elimination of floating lights / colored glow, neutral storm palette, unsynced empty state, softer cloud deck and wider cinematic framing.
