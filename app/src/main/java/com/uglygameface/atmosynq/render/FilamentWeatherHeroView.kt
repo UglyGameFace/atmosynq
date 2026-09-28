@@ -231,6 +231,12 @@ class FilamentWeatherHeroView(context: Context) : FrameLayout(context) {
         }
     }
 
+    fun setCinematicAsset(assetPath: String?) {
+        cinematicBackdrop.setSceneAsset(assetPath)
+        updateSceneMode()
+        requestRender()
+    }
+
     fun setExplorationMode(enabled: Boolean) {
         explorationMode = enabled
         cinematicBackdrop.setExplorationMode(enabled)
